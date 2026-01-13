@@ -206,7 +206,7 @@ export default {
 
       try {
           // 1. Get Count
-          const countBN = await referralContract.getReferralCount(userAddress).call();
+          const countBN = await referralContract.getReferralCount(userAddress);
           const count = Number(countBN.toString());
           referralCount.value = count;
           
@@ -227,12 +227,8 @@ export default {
           const coder = ethers.AbiCoder.defaultAbiCoder();
           const slotEncoded = coder.encode(["uint256"], [CHILDREN_SLOT]);
           
-          // Referrer Address to Hex/Eth format
-          // window.tronWeb is expected to be available
-          if (!window.tronWeb) throw new Error("TronWeb not found");
-          
-          const referrerHex = window.tronWeb.address.toHex(userAddress);
-          const referrerEthAddress = '0x' + referrerHex.substring(2);
+          // Referrer Address is already Hex in BSC
+          const referrerEthAddress = userAddress;
           
           const keyEncoded = coder.encode(["address"], [referrerEthAddress]);
           
@@ -280,16 +276,20 @@ export default {
             if (elementSlot.length % 2 !== 0) elementSlot = '0' + elementSlot; // padding
             elementSlot = '0x' + elementSlot;
 
-            const contractAddress = referralContract.address;
+            const contractAddress = referralContract.target;
             const val = await getStorageAt(contractAddress, elementSlot);
             
             if (val) {
                 const cleanVal = val.startsWith('0x') ? val.substring(2) : val;
                 // Last 20 bytes (40 chars) is address
                 if (cleanVal.length >= 40) {
-                     const addressHex = '41' + cleanVal.substring(cleanVal.length - 40);
-                     address = window.tronWeb.address.fromHex(addressHex);
-                     referrals.value[idx] = address;
+                     const addressHex = '0x' + cleanVal.substring(cleanVal.length - 40);
+                     try {
+                        address = ethers.getAddress(addressHex);
+                        referrals.value[idx] = address;
+                     } catch (e) {
+                        console.error("Invalid address derived from storage:", addressHex);
+                     }
                 }
             }
         }
