@@ -91,8 +91,8 @@ import s7poolAbi from '../abis/s7pool.json';
 import nodePoolAbi from '../abis/node_pool.json';
 import nodeDividendPoolAbi from '../abis/node_dividend_pool.json';
 import routerAbi from '../abis/router.json';
-import stakingHelperAbi from '../abis/staking_helper.json';
-import dynamicConfigAbi from '../abis/dynamicConfig.json';
+// import stakingHelperAbi from '../abis/staking_helper.json';
+// import dynamicConfigAbi from '../abis/dynamicConfig.json';
 
 // Select staking ABI based on environment
 const stakingAbi = APP_ENV === 'PROD' ? stakingAbiMain : stakingAbiTest;
@@ -144,14 +144,14 @@ const contractAddresses = {
     production: 'TQJdBf6reVqQS867HRdVRCPQdEaQgGoSMF',
     development: 'TVn1MBRBVpGz4v9W5Ykw522KZqgmyKZ9PP',
   },
-  stakingHelper: {
-    production: 'TTQrpEko4Nppf6sAfDrKq29wNYXGFQKvEU', 
-    development: 'TN5Yzxk9nZkv62Jjk9THJ7zBqa6rTDm2eE',
-  },
-  dynamicConfig: {
-    production: 'TFwe2SavtFzHhkmcXYpq1sFFU1Nm8Mev8S',
-    development: 'TQhbRrap82Ci8Cp3Hcw1xC1gUA3uQxZNQ9',
-  }
+  // stakingHelper: {
+  //   production: 'TTQrpEko4Nppf6sAfDrKq29wNYXGFQKvEU', 
+  //   development: 'TN5Yzxk9nZkv62Jjk9THJ7zBqa6rTDm2eE',
+  // },
+  // dynamicConfig: {
+  //   production: 'TFwe2SavtFzHhkmcXYpq1sFFU1Nm8Mev8S',
+  //   development: 'TQhbRrap82Ci8Cp3Hcw1xC1gUA3uQxZNQ9',
+  // }
 };
 
 // --- Contract Instances ---
@@ -165,10 +165,10 @@ let s6poolContract;
 let s7poolContract;
 let nodePoolContract;
 let nodeDividendPoolContract;
-let stakingHelperContract;
-let dynamicConfigContract;
+// let stakingHelperContract;
+// let dynamicConfigContract;
 
-export { referralContract, stakingContract, ospContract, oskContract, s5poolContract, s6poolContract, s7poolContract, nodePoolContract, nodeDividendPoolContract, stakingHelperContract, dynamicConfigContract };
+export { referralContract, stakingContract, ospContract, oskContract, s5poolContract, s6poolContract, s7poolContract, nodePoolContract, nodeDividendPoolContract };
 
 // --- KPI Thresholds ---
 // Note: These need to be checked if they are OSP or OSK values and adjusted for precision
@@ -278,8 +278,8 @@ export const initializeContracts = async () => {
   s7poolContract = await initSafe(contractAddresses.s7pool[env], 's7pool', s7poolAbi);
   nodePoolContract = await initSafe(contractAddresses.nodePool[env], 'nodePool', nodePoolAbi);
   nodeDividendPoolContract = await initSafe(contractAddresses.nodeDividendPool[env], 'nodeDividendPool', nodeDividendPoolAbi);
-  stakingHelperContract = await initSafe(contractAddresses.stakingHelper[env], 'stakingHelper', stakingHelperAbi);
-  dynamicConfigContract = await initSafe(contractAddresses.dynamicConfig[env], 'dynamicConfig', dynamicConfigAbi);
+  // stakingHelperContract = await initSafe(contractAddresses.stakingHelper[env], 'stakingHelper', stakingHelperAbi);
+  // dynamicConfigContract = await initSafe(contractAddresses.dynamicConfig[env], 'dynamicConfig', dynamicConfigAbi);
 
   walletState.contractsInitialized = true;
   console.log("[合约] 初始化流程结束 (部分可能因地址错误跳过)");
@@ -296,8 +296,8 @@ export const resetContracts = () => {
   s7poolContract = null;
   nodePoolContract = null;
   nodeDividendPoolContract = null;
-  stakingHelperContract = null;
-  dynamicConfigContract = null;
+  // stakingHelperContract = null;
+  // dynamicConfigContract = null;
   console.log("Contract instances have been reset.");
 };
 
@@ -876,35 +876,6 @@ export const stakeWithInviter = async (amount, stakeIndex, parentAddress) => {
   }
 };
 
-export const getNetwork1In = async (forceRefresh = false) => {
-    if (!stakingContract) return null;
-    return cachedCall('network1In', async () => {
-        try {
-            const res = await stakingContract.network1In().call();
-            return window.tronWeb.BigNumber(res.toString()); 
-        } catch (e) {
-            console.error("getNetwork1In error", e);
-            // Return null on error so we don't assume 0 usage (which would allow full quota)
-            return null;
-        }
-    }, CACHE_TTL, forceRefresh);
-};
-
-export const getOspReserveU = async (forceRefresh = false) => {
-    if (!ospContract) return window.tronWeb ? new window.tronWeb.BigNumber(0) : 0n;
-    return cachedCall('ospReserveU', async () => {
-        try {
-            const res = await ospContract.getReserveU().call();
-            const formatted = formatUnits(res, 18);
-            console.log(`[池子状态] 当前池子大小 (ospReserveU): ${formatted} OSK`);
-            return window.tronWeb.BigNumber(res.toString());
-        } catch (e) {
-            console.error("getOspReserveU error", e);
-            return window.tronWeb.BigNumber(0);
-        }
-    }, CACHE_TTL, forceRefresh);
-};
-
 // Helper to get storage value from Tron RPC
 export const getStorageAt = async (contractAddress, slotHex) => {
     let baseUrl;
@@ -973,229 +944,16 @@ export const getStorageAt = async (contractAddress, slotHex) => {
     }
 };
 
-const getTSupplyLength = async () => {
-    if (!stakingContract) return null;
-    try {
-        const contractAddress = stakingContract.address;
-        
-        // Slot 24 in hex is 0x18. Padded to 32 bytes (64 chars)
-        const slotHex = "0x" + Number(24).toString(16).padStart(64, '0');
-        
-        // 1. Try custom JSON-RPC implementation (more reliable for TronGrid)
-        const rpcResult = await getStorageAt(contractAddress, slotHex);
-        if (rpcResult) {
-            const len = parseInt(rpcResult, 16);
-            // If parsed correctly, return it. If NaN, strictly speaking it's an error in data, 
-            // but we might want to return null to be safe.
-            return isNaN(len) ? null : len;
-        }
-
-        // 2. Fallback to tronWeb native if available (some versions)
-        if (window.tronWeb && window.tronWeb.trx && window.tronWeb.trx.getStorageAt) {
-             // Not all tronWeb instances support getStorageAt or it might differ
-             // Usually it takes address and index
-             // Just retry the original approach as fallback
-        }
-
-        // If we got here, we failed to get the length
-        return null;
-    } catch (e) {
-        console.warn("Failed to get t_supply length", e);
-        return null;
-    }
-};
-
-/**
- * Fetch Configs from DynamicConfig Contract
- */
-export const getDynamicConfigs = async (forceRefresh = false) => {
-    if (!dynamicConfigContract) return null;
-    return cachedCall('dynamicConfigs', async () => {
-        try {
-            const configs = await dynamicConfigContract.getAllConfigs().call();
-            
-            // Map the struct response (array or object depending on TronWeb version/setup)
-            // Struct: maxPoolLimit, singleStakeLimit, stakeRateLimitDuration, stakeRateLimitAmount, exhaustedStakeLimit
-            
-            // Safe extraction helper
-            const extract = (key, index) => {
-                if (configs[key]) return configs[key];
-                if (configs[index]) return configs[index];
-                return 0; // Default
-            };
-
-            const result = {
-                maxPoolLimit: window.tronWeb.BigNumber(extract('maxPoolLimit', 0).toString()),
-                singleStakeLimit: window.tronWeb.BigNumber(extract('singleStakeLimit', 1).toString()),
-                stakeRateLimitDuration: window.tronWeb.BigNumber(extract('stakeRateLimitDuration', 2).toString()),
-                stakeRateLimitAmount: window.tronWeb.BigNumber(extract('stakeRateLimitAmount', 3).toString()),
-                exhaustedStakeLimit: window.tronWeb.BigNumber(extract('exhaustedStakeLimit', 4).toString()),
-            };
-            
-            console.log(`[动态配置] 获取成功:
-                池子上限 (maxPoolLimit): ${result.maxPoolLimit.toString()}
-                单笔限额 (singleStakeLimit): ${result.singleStakeLimit.toString()}
-                限频时长 (stakeRateLimitDuration): ${result.stakeRateLimitDuration.toString()}秒
-                限频额度 (stakeRateLimitAmount): ${result.stakeRateLimitAmount.toString()}
-                耗尽低保 (exhaustedStakeLimit): ${result.exhaustedStakeLimit.toString()} (对应 ${result.exhaustedStakeLimit.div(100).toString()} OSK)
-            `);
-            
-            return result;
-        } catch (e) {
-            console.error("getDynamicConfigs error", e);
-            return null;
-        }
-    }, CACHE_TTL, forceRefresh);
-};
-
-export const getNetworkInDuration = async (durationSeconds, forceRefresh = false) => {
-    if (!stakingHelperContract || !stakingContract) return null;
-    return cachedCall(`networkIn_${durationSeconds}`, async () => {
-        try {
-            const length = await getTSupplyLength();
-            if (length === null) return null;
-            if (length === 0) return window.tronWeb.BigNumber(0);
-            
-            const res = await stakingHelperContract.getNetworkIn(stakingContract.address, length, durationSeconds).call();
-            return window.tronWeb.BigNumber(res.toString());
-        } catch (e) {
-            console.error(`getNetworkInDuration(${durationSeconds}) error`, e);
-            return null;
-        }
-    }, CACHE_TTL, forceRefresh);
-};
-
-export const getNetworkIn2Minutes = async (forceRefresh = false) => {
-    // Wrapper for backward compatibility or direct use
-    return getNetworkInDuration(120, forceRefresh);
-};
-
-export const getFrontendQuotaLimit = async (forceRefresh = false) => {
-    try {
-        if (!window.tronWeb) return "0";
-
-        // 1. Fetch Dynamic Configs
-        const configs = await getDynamicConfigs(forceRefresh);
-        const decimals = 18;
-        const BigNumber = window.tronWeb.BigNumber;
-        
-        // Defaults if config fails
-        let duration = 120;
-        let limitAmount = new BigNumber(4).times(new BigNumber(10).pow(decimals));
-        let maxPoolLimit = new BigNumber(7500).times(new BigNumber(10).pow(decimals)); // Default large enough? Or 0?
-        let exhaustedLimit = new BigNumber(0);
-
-        if (configs) {
-            // Configs are BigNumbers from TronWeb
-            const d = configs.stakeRateLimitDuration.toNumber();
-            if (d > 0) duration = d;
-            
-            // Limit Amount is in OSK units -> convert to Wei
-            limitAmount = configs.stakeRateLimitAmount.times(new BigNumber(10).pow(decimals));
-            
-            // Max Pool Limit is in OSK units -> convert to Wei
-            maxPoolLimit = configs.maxPoolLimit.times(new BigNumber(10).pow(decimals));
-            
-            // Exhausted Limit is in Cent-OSK units (50 -> 0.5) -> convert to Wei
-            // 50 / 100 * 10^18 = 50 * 10^16
-            exhaustedLimit = configs.exhaustedStakeLimit.times(new BigNumber(10).pow(16));
-        }
-
-        // 2. Fetch Network Usage
-        const netInDuration = await getNetworkInDuration(duration, forceRefresh);
-        
-        if (netInDuration === null) {
-            console.warn("[Quota Limit] RPC Data Fetch Failed. Defaulting to 0.");
-            return { value: "0", type: "数据获取失败(限流)" };
-        }
-
-        // 3. Fetch Pool Reserve
-        const poolReserveU = await getOspReserveU(forceRefresh); // Returns Wei BigNumber
-
-        console.log(`[额度计算]
-            配置时长: ${duration}s
-            配置限额: ${formatUnits(limitAmount, 18)} OSK
-            当前用量: ${formatUnits(netInDuration, 18)} OSK
-            池子上限: ${formatUnits(maxPoolLimit, 18)} OSK
-            当前池子: ${formatUnits(poolReserveU, 18)} OSK
-            低保额度: ${formatUnits(exhaustedLimit, 18)} OSK
-        `);
-
-        // 4. Calculate Quotas
-        
-        // A. Rate Limit Quota
-        let rateLimitQuota = new BigNumber(0);
-        if (limitAmount.gt(netInDuration)) {
-            rateLimitQuota = limitAmount.minus(netInDuration);
-        }
-
-        // B. Pool Limit Quota (Is pool full?)
-        // If Reserve < Max, then OK. Quota effectively unlimited by pool? 
-        // User said: "if ... getReserveU ... smaller than maxPoolLimit, then open quota, otherwise no quota"
-        // This implies if Reserve >= Max, quota is 0.
-        // If Reserve < Max, quota is determined by Rate Limit.
-        
-        let isPoolFull = poolReserveU.gte(maxPoolLimit);
-        
-        let baseQuota = isPoolFull ? new BigNumber(0) : rateLimitQuota;
-        
-        // 5. Apply Exhausted Limit Logic
-        // "if quota exhausted (or pool full), show exhaustedStakeLimit"
-        // This acts as a floor for the quota, assuming strict > 0 check isn't intended to block completely if we have exhausted limit.
-        // Wait, if baseQuota is 0, we use exhaustedLimit.
-        // If baseQuota > 0, do we take max(baseQuota, exhaustedLimit)? Yes, probably.
-        
-        let finalQuota = baseQuota;
-        if (finalQuota.lt(exhaustedLimit)) {
-             finalQuota = exhaustedLimit;
-             console.log(`[额度计算] 触发低保/耗尽额度: ${formatUnits(exhaustedLimit, 18)}`);
-        }
-        
-        const limitType = `${duration / 60}分钟限制`;
-        
-        return { value: formatUnits(finalQuota, 18), type: limitType };
-        
-    } catch (e) {
-        console.error("Quota limit calc error", e);
-        return { value: "0", type: "Error" };
-    }
-};
-
 export const getEffectiveMaxStakeAmount = async (forceRefresh = false) => {
+    // Only use contract max stake amount
     const contractMaxStr = await getMaxStakeAmount(forceRefresh);
-    const quotaResult = await getFrontendQuotaLimit(forceRefresh);
-    const frontendMaxStr = typeof quotaResult === 'object' ? quotaResult.value : quotaResult;
-    const timeLimitType = typeof quotaResult === 'object' ? quotaResult.type : "未知时间限制";
     
-    // Get Dynamic Single Limit
-    const configs = await getDynamicConfigs(forceRefresh);
-    let singleLimitStr = null;
-    if (configs && configs.singleStakeLimit.gt(0)) {
-         // singleStakeLimit is OSK units
-         singleLimitStr = configs.singleStakeLimit.toString(); 
-    }
+    // Apply Single Purchase Limit if enabled in environment (local config only)
+    let effective = parseFloat(contractMaxStr);
+    let winningLimit = "合约硬顶限制";
 
-    const contractMax = parseFloat(contractMaxStr);
-    const frontendMax = parseFloat(frontendMaxStr);
-    
-    // Return the smaller of the two (contract max vs time-based limits)
-    // If either is 0, effective max is 0 (blocked)
-    if (contractMax === 0 || frontendMax === 0) {
-         console.log(`[最大额度调试] 额度已耗尽或被锁定。合约最大: ${contractMax}, 时间限制最大: ${frontendMax}`);
-         return "0";
-    }
-    
-    let effective = Math.min(contractMax, frontendMax);
-    let winningLimit = contractMax < frontendMax ? "合约硬顶限制" : timeLimitType;
-
-    // Apply Single Purchase Limit if enabled
     if (ENABLE_SINGLE_PURCHASE_LIMIT) {
         let limitVal = SINGLE_PURCHASE_LIMIT;
-        
-        // Use Dynamic Limit if available
-        if (singleLimitStr) {
-            limitVal = parseFloat(singleLimitStr);
-        }
         
         if (limitVal < effective) {
             effective = limitVal;
