@@ -745,23 +745,43 @@ export const getStorageAt = async (contractAddress, slotHex) => {
 export const getEffectiveMaxStakeAmount = async (forceRefresh = false) => {
     // Only use contract max stake amount
     const contractMaxStr = await getMaxStakeAmount(forceRefresh);
+    const decimals = getOskDecimals();
     
-    // Apply Single Purchase Limit if enabled in environment (local config only)
-    let effective = parseFloat(contractMaxStr);
+    // Convert contract max to BigInt for precise comparison
+    let effectiveBn;
+    try {
+        effectiveBn = ethers.parseUnits(contractMaxStr, decimals);
+    } catch (e) {
+        console.warn("Error parsing max stake amount, defaulting to 0", e);
+        return "0";
+    }
+
     let winningLimit = "合约硬顶限制";
+    let finalLimit = effectiveBn;
 
     if (ENABLE_SINGLE_PURCHASE_LIMIT) {
-        let limitVal = SINGLE_PURCHASE_LIMIT;
-        
-        if (limitVal < effective) {
-            effective = limitVal;
-            winningLimit = `单笔购买限制 (${limitVal})`;
+        try {
+            // Convert limit to string first to handle decimals safely, then to BigInt
+            const limitValStr = SINGLE_PURCHASE_LIMIT.toString();
+            const limitBn = ethers.parseUnits(limitValStr, decimals);
+            
+            if (limitBn < effectiveBn) {
+                finalLimit = limitBn;
+                winningLimit = `单笔购买限制 (${limitValStr})`;
+            }
+        } catch (e) {
+            console.error("Error processing single purchase limit:", e);
         }
     }
     
-    console.log(`[最大额度调试] 最终生效限额: ${effective}, 限制来源: ${winningLimit}`);
+    const finalFormatted = formatUnits(finalLimit, decimals);
     
-    return effective.toString();
+    console.log(`[最大质押额度]
+      - 合约硬顶: ${contractMaxStr}
+      - 单笔限制: ${ENABLE_SINGLE_PURCHASE_LIMIT ? SINGLE_PURCHASE_LIMIT : '未开启'}
+      - 最终生效: ${finalFormatted} (${winningLimit})`);
+    
+    return finalFormatted;
 };
 
 export const getMaxStakeAmount = async (forceRefresh = false) => {
@@ -769,9 +789,7 @@ export const getMaxStakeAmount = async (forceRefresh = false) => {
   return cachedCall('maxStakeAmount', async () => {
     try {
         const maxStake = await stakingContract.maxStakeAmount();
-        const formatted = formatUnits(maxStake, getOskDecimals());
-        console.log(`[合约参数] maxStakeAmount (合约硬顶): ${formatted}`);
-        return formatted;
+        return formatUnits(maxStake, getOskDecimals());
     } catch (error) {
         return "0";
     }

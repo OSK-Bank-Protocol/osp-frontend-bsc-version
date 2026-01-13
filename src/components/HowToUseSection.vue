@@ -72,7 +72,7 @@
                                     <div class="info-row">
                                         <span class="label">{{ t('howToUse.netValue') }}</span>
                                         <span class="value gold">
-                                            <AnimatedNumber :value="parseFloat(item.principal) + parseFloat(item.interest)" :decimals="4" />
+                                            {{ parseFloat(item.totalValue).toFixed(4) }}
                                         </span>
                                     </div>
                                 </div>
@@ -139,8 +139,8 @@ import {
 } from '../services/contracts';
 import { APP_ENV } from '../services/environment';
 import CountdownTimer from './CountdownTimer.vue';
-import AnimatedNumber from './AnimatedNumber.vue';
 import { t } from '@/i18n';
+import { ethers } from 'ethers';
 
 const stakingItems = ref([]);
 const totalItems = ref(0);
@@ -191,18 +191,20 @@ const fetchStakingData = async () => {
 
         stakingItems.value = pageRecords.map((record, index) => {
             const id = Number(record.id);
-            let interest;
+            let interestBn = 0n;
             
             // Convert everything to BigInt explicitly to avoid type mixing errors
             const amountBn = BigInt(record.amount.toString());
             
             if (status === 0) {
                 const totalValue = liveRewards[index] ? BigInt(liveRewards[index].toString()) : 0n;
-                interest = totalValue > amountBn ? totalValue - amountBn : 0n;
+                interestBn = totalValue > amountBn ? totalValue - amountBn : 0n;
             } else {
                 const finalRewardBn = BigInt(record.finalReward.toString());
-                interest = finalRewardBn > 0n ? finalRewardBn - amountBn : 0n;
+                interestBn = finalRewardBn > 0n ? finalRewardBn - amountBn : 0n;
             }
+
+            const totalValueBn = amountBn + interestBn;
 
             const stakeTimeInSeconds = Number(record.stakeTime);
             const stakeDurationInSeconds = stakeDurations[Number(record.stakeIndex)];
@@ -216,8 +218,9 @@ const fetchStakingData = async () => {
             }
 
             return {
-                principal: formatUnits(record.amount, decimals),
-                interest: formatUnits(interest, decimals),
+                principal: formatUnits(amountBn, decimals),
+                interest: formatUnits(interestBn, decimals),
+                totalValue: formatUnits(totalValueBn, decimals), // Pre-calculated total
                 stakeDate: new Date(stakeTimeInSeconds * 1000).toLocaleString('zh-CN', {
                     year: 'numeric', month: '2-digit', day: '2-digit',
                     hour: '2-digit', minute: '2-digit', second: '2-digit',
