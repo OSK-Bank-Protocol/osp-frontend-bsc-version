@@ -1,0 +1,115 @@
+/* Vintage Chalkboard & Scientific Diagram Design System */
+:root {
+  /* Colors */
+  --bg-main: #1A1A1A; /* Charcoal Blackboard Base */
+  --bg-card: rgba(255, 255, 255, 0.03); /* Smudged Chalk Effect */
+  --bg-card-hover: rgba(255, 255, 255, 0.07);
+  
+  --primary-gold: #EECFA1; /* Dusty Gold Chalk */
+  --primary-gold-dim: rgba(238, 207, 161, 0.6);
+  --primary-gold-glow: rgba(238, 207, 161, 0.2);
+  
+  --text-primary: #F4F4F4; /* Chalk White */
+  --text-secondary: #D4D4D4; /* Faded Chalk */
+  --text-muted: #8A8A8A; /* Erased Chalk */
+  
+  --border-light: rgba(244, 244, 244, 0.2); /* Thin Chalk Line */
+  --border-gold: rgba(238, 207, 161, 0.5); /* Gold Chalk Line */
+
+  /* Fonts */
+  /* Fallback to KaiTi (楷体) for a handwritten/brush feel if web fonts fail */
+  /* Optimized for readability: Using LXGW WenKai Screen for a modern vintage/handwritten feel that matches English fonts */
+  --font-heading: 'Fredericka the Great', "LXGW WenKai Screen", "LXGW WenKai", "KaiTi", "STKaiti", "楷体", "FangSong", "仿宋", serif; 
+  --font-body: 'Architects Daughter', "LXGW WenKai Screen", "LXGW WenKai", "KaiTi", "STKaiti", "楷体", "FangSong", "仿宋", serif;
+  --font-mono: 'Courier Prime', monospace; /* Scientific Data */
+
+  /* Spacing */
+  --container-width: 1280px;
+  --header-height: 80px;
+}
+
+/* Base Reset & Global Styles */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-main);
+  /* Textured Blackboard Background */
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px; /* Grid for Scientific feel */
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Chalk Text Effect */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.5); /* Depth */
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+}
+
+ul {
+  list-style: none;
+}
+
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+/* Utilities */
+.container {
+  width: 100%;
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Global Button Style Overrides for Chalk Theme */
+.chalk-border {
+  border: 2px solid var(--border-light);
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; /* Irregular hand-drawn circle */
+}
+
+.chalk-underline {
+  position: relative;
+}
+.chalk-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--text-primary);
+  border-radius: 2px;
+  mask-image: url("data:image/svg+xml,%3Csvg width='100' height='5' viewBox='0 0 100 5' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 2.5 Q 25 0, 50 2.5 T 100 2.5' stroke='black' fill='none' stroke-width='3'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='100' height='5' viewBox='0 0 100 5' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 2.5 Q 25 0, 50 2.5 T 100 2.5' stroke='black' fill='none' stroke-width='3'/%3E%3C/svg%3E");
+}
+
+/* Force override legacy template fonts to ensure Chinese font consistency */
+.font-main, .font-2, .font-3 {
+    font-family: var(--font-body) !important;
+}

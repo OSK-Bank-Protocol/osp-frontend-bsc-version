@@ -1,0 +1,46 @@
+@import './base.css';
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Advanced Modal Transitions (Tech/Sci-Fi Style) */
+.modal-enter-active {
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy spring effect */
+}
+
+.modal-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth exit */
+}
+
+.modal-enter-from {
+  opacity: 0;
+  transform: scale(0.85) translateY(20px); /* Start smaller and lower */
+  filter: blur(12px); /* Start blurry */
+}
+
+.modal-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(-10px); /* Slight float up on exit */
+  filter: blur(8px);
+}
+
+/* Ensure modal content scales smoothly with the wrapper */
+.modal-enter-active .modal-content,
+.modal-leave-active .modal-content {
+  transition: none; /* Disable individual transitions to let parent control */
+}
