@@ -62,13 +62,13 @@ export default {
         copyrightText() {
             let envPrefix;
             if (APP_ENV === 'PROD') {
-                envPrefix = 'M'; // Mainnet/Production
+                envPrefix = 'M-BSC-'; // Mainnet/Production
             } else if (APP_ENV === 'test') {
-                envPrefix = 'T'; // Test/Preview
+                envPrefix = 'T-BSC-'; // Test/Preview
             } else {
-                envPrefix = 'D'; // Dev/Local
+                envPrefix = 'D-BSC-'; // Dev/Local
             }
-            const version = '1.1.1';
+            const version = '1.2.0';
             return `${this.t('footer.copyright')} ${envPrefix}-${version}`;
         }
     },
