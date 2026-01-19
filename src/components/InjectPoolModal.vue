@@ -386,9 +386,14 @@ export default {
       // --- Validation Logic (BigInt) ---
       try {
           const decimals = getOskDecimals();
-          const inputAmountBn = ethers.parseUnits(this.amount, decimals);
+          // Ensure this.amount is a string to prevent TypeError: value must be a string
+          const amountStr = String(this.amount || '0');
+          const inputAmountBn = ethers.parseUnits(amountStr, decimals);
           const userBalanceBn = ethers.parseUnits(this.oskBalance || '0', decimals);
-          const maxAllowedBn = ethers.parseUnits(this.effectiveMaxStakeAmount, decimals);
+          
+          // Ensure this.effectiveMaxStakeAmount is treated as a string too
+          const maxStakeAmountStr = String(this.effectiveMaxStakeAmount || '0');
+          const maxAllowedBn = ethers.parseUnits(maxStakeAmountStr, decimals);
 
           if (inputAmountBn > userBalanceBn) {
               showToast(this.t('inject.insufficientBalance'));
@@ -435,7 +440,8 @@ export default {
                 try {
                     const decimals = getOskDecimals();
                     const currentAllowanceBn = ethers.parseUnits(this.oskAllowance || '0', decimals);
-                    const requiredAmountBn = ethers.parseUnits(this.amount, decimals);
+                    const amountStr = String(this.amount || '0');
+                    const requiredAmountBn = ethers.parseUnits(amountStr, decimals);
                     
                     if (currentAllowanceBn >= requiredAmountBn) {
                         clearInterval(pollInterval);

@@ -163,13 +163,13 @@ const fetchStakingData = async () => {
         const status = activeTab.value === 'investment' ? 0 : 1;
         const offset = (currentPage.value - 1) * itemsPerPage.value;
 
-        // TronWeb call requires .call() and returns an object, not array
+        // Ethers.js call returns a promise directly
         const res = await stakingContract.getUserRecords(
             walletState.address,
             offset,
             itemsPerPage.value,
             status
-        ).call();
+        );
 
         // TronWeb result handling
         // Named returns should be available as properties

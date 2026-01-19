@@ -204,8 +204,8 @@ export const connectWallet = async (walletType) => {
     // Update State
     walletState.isConnected = true;
     walletState.address = address;
-    walletState.provider = browserProvider;
-    walletState.signer = signer;
+    walletState.provider = markRaw(browserProvider);
+    walletState.signer = markRaw(signer);
     walletState.walletType = walletType;
     walletState.network = APP_ENV === 'PROD' ? 'BSC Mainnet' : 'BSC Testnet';
     
@@ -316,7 +316,7 @@ const handleAccountsChanged = async (newAddress) => {
     const reauthSuccess = await authenticateWallet(newAddress, signer);
 
     if (reauthSuccess) {
-        walletState.signer = signer;
+        walletState.signer = markRaw(signer);
         await initializeContracts();
         const hasReferrer = await checkIfUserHasReferrer();
         walletState.isNewUser = !hasReferrer;
