@@ -805,3 +805,66 @@ export const rewardOfSlot = async (id) => {
         return 0n;
     }
 };
+
+export const getMaxUnstakeAmount = async (forceRefresh = false) => {
+  if (!stakingContract) return "0";
+  return cachedCall('maxUnstakeAmount', async () => {
+    try {
+        const maxUnstake = await stakingContract.maxUnstakeAmount();
+        return formatUnits(maxUnstake, getOskDecimals());
+    } catch (error) {
+        return "0";
+    }
+  }, CACHE_TTL, forceRefresh);
+};
+
+export const unstakePrincipalOnly = async (index) => {
+  if (!stakingContract) return false;
+  try {
+    const tx = await stakingContract.unstakePrincipalOnly(index);
+    showToast(t('toast.txSent'));
+    await tx.wait();
+    showToast(t('toast.unstakeSuccess'));
+    return true;
+  } catch (error) {
+    console.error("Unstake Principal Only error:", error);
+    let errorMsg = t('toast.unstakeFailed');
+    if (error && error.reason) errorMsg = error.reason;
+    showToast(errorMsg);
+    return false;
+  }
+};
+
+export const unstakeWithBonus = async (index, newAmount, newStakeIndex) => {
+    if (!stakingContract) return false;
+    try {
+        const decimals = getOskDecimals();
+        const amountStr = parseUnits(newAmount, decimals);
+        const amountInWei = BigInt(amountStr);
+        
+        // Slippage calc
+        const expectedOSP = await getExpectedOSPAmount(amountInWei / 2n);
+        let amountOutMin = 0n;
+        if (expectedOSP > 0n) {
+             amountOutMin = (expectedOSP * 90n) / 100n; // 10% slippage
+        }
+        
+        const tx = await stakingContract.unstakeWithBonus(
+            index,
+            amountInWei,
+            amountOutMin,
+            newStakeIndex
+        );
+        
+        showToast(t('toast.txSent'));
+        await tx.wait();
+        showToast(t('toast.unstakeSuccess'));
+        return true;
+    } catch (error) {
+        console.error("Unstake With Bonus error:", error);
+        let errorMsg = t('toast.unstakeFailed');
+        if (error && error.reason) errorMsg = error.reason;
+        showToast(errorMsg);
+        return false;
+    }
+};
