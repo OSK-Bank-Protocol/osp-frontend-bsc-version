@@ -123,15 +123,9 @@ import {
   checkIfUserHasReferrer,
   getReferrer,
   getTeamKpiBigNumber,
-  S1_THRESHOLD,
-  S2_THRESHOLD,
-  S3_THRESHOLD,
-  S4_THRESHOLD,
-  S5_THRESHOLD,
-  S6_THRESHOLD,
-  S7_THRESHOLD,
   getUserPrincipalBalance,
-  formatUnits
+  formatUnits,
+  getUserLevel
 } from '../services/contracts';
 import {
   showToast
@@ -164,10 +158,11 @@ const fetchHeroData = async () => {
   }
 
   try {
-    const [newStakedBalance, kpi, principalBalance] = await Promise.all([
+    const [newStakedBalance, kpi, principalBalance, level] = await Promise.all([
       getUserStakedBalance(),
       getTeamKpiBigNumber(),
-      getUserPrincipalBalance()
+      getUserPrincipalBalance(),
+      getUserLevel()
     ]);
     
     stakedBalance.value = parseFloat(newStakedBalance) || 0;
@@ -175,20 +170,10 @@ const fetchHeroData = async () => {
     friendsBoost.value = parseFloat(formatUnits(kpi, 18)) || 0;
     totalInvestmentValue.value = parseFloat(principalBalance) || 0;
     
-    if (kpi >= S7_THRESHOLD) {
-      userLevel.value = 'S7';
-    } else if (kpi >= S6_THRESHOLD) {
-      userLevel.value = 'S6';
-    } else if (kpi >= S5_THRESHOLD) {
-      userLevel.value = 'S5';
-    } else if (kpi >= S4_THRESHOLD) {
-      userLevel.value = 'S4';
-    } else if (kpi >= S3_THRESHOLD) {
-      userLevel.value = 'S3';
-    } else if (kpi >= S2_THRESHOLD) {
-      userLevel.value = 'S2';
-    } else if (kpi >= S1_THRESHOLD) {
-      userLevel.value = 'S1';
+    console.log(`[HeroSection] User Level Updated: ${level}`);
+
+    if (level > 0) {
+      userLevel.value = 'S' + level;
     } else {
       userLevel.value = '';
     }

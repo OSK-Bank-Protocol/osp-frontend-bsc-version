@@ -264,6 +264,39 @@ export const getTeamKpiBigNumber = async () => {
     }, SHORT_CACHE_TTL);
 };
 
+export const getSelfStake = async () => {
+  if (!stakingContract || !walletState.address) return 0n;
+  return cachedCall(`selfStake_${walletState.address}`, async () => {
+    try {
+        const selfStake = await stakingContract.getSelfStake(walletState.address);
+        return BigInt(selfStake.toString());
+    } catch (error) {
+        console.error("Error fetching self stake:", error);
+        return 0n;
+    }
+  }, SHORT_CACHE_TTL);
+};
+
+export const getUserLevel = async () => {
+    if (!stakingContract || !walletState.address) return 0;
+    // Cache level to avoid frequent RPC calls if called multiple times
+    return cachedCall(`userLevel_${walletState.address}`, async () => {
+        try {
+            const [kpi, selfStake] = await Promise.all([
+                getTeamKpiBigNumber(),
+                getSelfStake()
+            ]);
+            console.log(`[UserLevel] Checking level for ${walletState.address}: KPI=${kpi}, SelfStake=${selfStake}`);
+            const level = await stakingContract.getLevel(kpi, selfStake);
+            console.log(`[UserLevel] Result: Level ${level}`);
+            return Number(level);
+        } catch (error) {
+            console.error("Error fetching user level:", error);
+            return 0;
+        }
+    }, SHORT_CACHE_TTL);
+};
+
 export const getUserStakedBalance = async () => {
   if (!stakingContract || !walletState.address) return "0";
   return cachedCall(`userStakedBalance_${walletState.address}`, async () => {
@@ -824,7 +857,7 @@ export const unstakePrincipalOnly = async (index) => {
     const tx = await stakingContract.unstakePrincipalOnly(index);
     showToast(t('toast.txSent'));
     await tx.wait();
-    showToast(t('toast.unstakeSuccess'));
+    showToast(t('toast.redeemPrincipalSuccess'));
     return true;
   } catch (error) {
     console.error("Unstake Principal Only error:", error);
@@ -849,6 +882,8 @@ export const unstakeWithBonus = async (index, newAmount, newStakeIndex) => {
              amountOutMin = (expectedOSP * 90n) / 100n; // 10% slippage
         }
         
+        console.log(`[Reinvest] unstakeWithBonus params: index=${index}, amount=${amountInWei} (${newAmount}), minOut=${amountOutMin}, stakeIndex=${newStakeIndex}`);
+
         const tx = await stakingContract.unstakeWithBonus(
             index,
             amountInWei,
@@ -858,7 +893,7 @@ export const unstakeWithBonus = async (index, newAmount, newStakeIndex) => {
         
         showToast(t('toast.txSent'));
         await tx.wait();
-        showToast(t('toast.unstakeSuccess'));
+        showToast(t('toast.reinvestSuccess'));
         return true;
     } catch (error) {
         console.error("Unstake With Bonus error:", error);

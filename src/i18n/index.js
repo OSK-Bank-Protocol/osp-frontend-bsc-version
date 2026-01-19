@@ -108,6 +108,8 @@ const languagePacks = {
     'redeem.back': '返回',
     'redeem.currentValue': '当前总价值',
     'redeem.lostReward': '预计损失收益',
+    'redeem.confirmForfeit': '确定放弃 {amount} 收益获取本金？',
+    'redeem.goToReinvest': '去复投',
     
     // Claim Reward Modal
     'claim.title': '成就奖励',
@@ -146,6 +148,8 @@ const languagePacks = {
     'toast.stakingNotInitialized': '质押合约未初始化',
     'toast.invalidOrderId': '无效的订单ID',
     'toast.unstakeSuccess': '赎回成功！',
+    'toast.reinvestSuccess': '您已复投成功！',
+    'toast.redeemPrincipalSuccess': '您已赎回本金！',
     'toast.unstakeFailed': '赎回失败',
     'toast.calculateFailed': '无法计算预期输出，质押中止',
     'toast.stakeFailed': '质押失败: {reason}',
@@ -391,6 +395,8 @@ const languagePacks = {
     'toast.stakingNotInitialized': '質押合約未初始化',
     'toast.invalidOrderId': '無效的訂單ID',
     'toast.unstakeSuccess': '贖回成功！',
+    'toast.reinvestSuccess': '您已復投成功！',
+    'toast.redeemPrincipalSuccess': '您已贖回本金！',
     'toast.unstakeFailed': '贖回失敗',
     'toast.calculateFailed': '無法計算預期輸出，質押中止',
     'toast.stakeFailed': '質押失敗: {reason}',
@@ -526,6 +532,8 @@ const languagePacks = {
     'redeem.back': 'Back',
     'redeem.currentValue': 'Current Total Value',
     'redeem.lostReward': 'Estimated Lost Reward',
+    'redeem.confirmForfeit': 'Are you sure you want to forfeit {amount} rewards to get principal?',
+    'redeem.goToReinvest': 'Go to Reinvest',
     
     // Claim Reward Modal
     'claim.title': 'Claim Your Achievement Rewards',
@@ -608,6 +616,8 @@ const languagePacks = {
     'toast.stakingNotInitialized': 'Staking contract not initialized',
     'toast.invalidOrderId': 'Invalid order ID',
     'toast.unstakeSuccess': 'Unstake successful!',
+    'toast.reinvestSuccess': 'Reinvestment successful!',
+    'toast.redeemPrincipalSuccess': 'Principal redeemed successfully!',
     'toast.unstakeFailed': 'Unstake failed',
     'toast.calculateFailed': 'Unable to calculate expected output, staking aborted',
     'toast.stakeFailed': 'Staking failed: {reason}',

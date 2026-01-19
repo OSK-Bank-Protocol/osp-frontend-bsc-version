@@ -2,10 +2,10 @@
   <div class="modal-overlay" @click.self="close">
     <div class="modal-content cool-modal">
       <!-- Tech corners -->
-      <div class="tech-corner top-left"></div>
-      <div class="tech-corner top-right"></div>
-      <div class="tech-corner bottom-left"></div>
-      <div class="tech-corner bottom-right"></div>
+      <!-- <div class="tech-corner top-left"></div> -->
+      <!-- <div class="tech-corner top-right"></div> -->
+      <!-- <div class="tech-corner bottom-left"></div> -->
+      <!-- <div class="tech-corner bottom-right"></div> -->
 
       <div class="modal-body">
         <button @click="close" class="close-button">
@@ -19,7 +19,22 @@
 
         <!-- Mode Selection -->
         <div v-if="mode === 'select'" class="selection-container">
-            <!-- Option 1: Principal Only -->
+            <!-- Option 1: Reinvest (Recommended) - Moved to top -->
+            <div class="option-card highlight" @click="handleReinvestSelect">
+                <div class="option-badge">{{ t('redeem.recommended') }}</div>
+                <div class="option-header">
+                    <span class="option-title">{{ t('redeem.reinvest') }}</span>
+                </div>
+                <div class="option-desc">{{ t('redeem.reinvestDesc') }}</div>
+                <div class="bonus-text">{{ t('redeem.getBonus') }}</div>
+
+                <div class="info-row">
+                    <span class="label">{{ t('redeem.currentValue') }}:</span>
+                    <span class="value gold">{{ totalValueDisplay }}</span>
+                </div>
+            </div>
+
+            <!-- Option 2: Principal Only - Moved to bottom -->
             <div class="option-card" @click="handlePrincipalOnly" :class="{ 'disabled': isPrincipalLimitReached }">
                 <div class="option-header">
                     <span class="option-title">{{ t('redeem.principalOnly') }}</span>
@@ -36,21 +51,27 @@
                     {{ t('redeem.dailyLimitReached') }}
                 </div>
             </div>
-            
-            <!-- Option 2: Reinvest -->
-            <div class="option-card highlight" @click="handleReinvestSelect">
-                <div class="option-badge">{{ t('redeem.recommended') }}</div>
-                <div class="option-header">
-                    <span class="option-title">{{ t('redeem.reinvest') }}</span>
-                </div>
-                <div class="option-desc">{{ t('redeem.reinvestDesc') }}</div>
-                <div class="bonus-text">{{ t('redeem.getBonus') }}</div>
+        </div>
 
-                <div class="info-row">
-                    <span class="label">{{ t('redeem.currentValue') }}:</span>
-                    <span class="value gold">{{ totalValueDisplay }}</span>
-                </div>
-            </div>
+        <!-- Confirm Principal Only -->
+        <div v-else-if="mode === 'confirmPrincipal'" class="confirm-view">
+             <div class="confirm-icon-wrapper">
+                 <i class="icon-warning"></i>
+             </div>
+             <p class="confirm-text">
+                 {{ t('redeem.confirmForfeit', { amount: lostRewardDisplay }) }}
+             </p>
+             
+             <div class="button-group-row">
+                 <button class="action-btn secondary-btn small-btn" @click="doRedeemPrincipal">
+                     {{ t('referrer.confirm') }}
+                 </button>
+                 <button class="action-btn primary-btn large-btn" @click="switchToReinvest">
+                     {{ t('redeem.goToReinvest') }}
+                 </button>
+             </div>
+             
+             <button class="back-link" @click="mode = 'select'">{{ t('redeem.back') }}</button>
         </div>
 
         <!-- Reinvest Form -->
@@ -72,12 +93,15 @@
                             v-model="newAmount"
                             @input="handleAmountInput"
                             class="form-input"
-                            :class="{ 'input-error': isAmountInvalid }"
+                            :class="{ 'input-error': isInputTooLow }"
                         >
                         <span class="currency-label">{{ t('common.osk') }}</span>
                     </div>
                     <div class="balance-info">
-                        <span class="balance-text">{{ t('inject.maxAmount', { amount: formattedBalance, token: t('common.osk') }) }}</span>
+                        <span class="balance-text" :class="{ 'text-error': isBalanceExceeded }">
+                            {{ t('inject.maxAmount', { amount: formattedBalance, token: t('common.osk') }) }}
+                        </span>
+                        <button @click.prevent="fillMax" class="balance-btn">MAX</button>
                     </div>
                 </div>
             </div>
@@ -144,14 +168,14 @@ export default {
   data() {
     return {
       mode: 'select', // select | reinvest
-      maxUnstakeAmount: '0',
+      maxUnstakeAmount: null, // Initialize as null to prevent premature warning
       maxStakeAmount: '0',
       newAmount: '',
       selectedDuration: null,
       oskAllowance: '0',
       oskBalance: '0',
       isApproving: false,
-      isLoading: false,
+      isLoading: true, // Start as loading
     };
   },
   computed: {
@@ -176,6 +200,7 @@ export default {
         }
     },
     isPrincipalLimitReached() {
+        if (this.maxUnstakeAmount === null) return false;
         try {
             const limit = parseFloat(this.maxUnstakeAmount);
             const principal = parseFloat(this.principal);
@@ -184,8 +209,32 @@ export default {
             return false;
         }
     },
+    // Computed property for the actual max stake limit (min of balance and global limit)
+    actualMaxStake() {
+      try {
+        const decimals = getOskDecimals();
+        const balanceBn = ethers.parseUnits(this.oskBalance || '0', decimals);
+        const maxLimitBn = ethers.parseUnits(this.maxStakeAmount || '0', decimals);
+        
+        return balanceBn < maxLimitBn ? balanceBn : maxLimitBn;
+      } catch (e) {
+        return 0n;
+      }
+    },
+    formattedMaxStake() {
+        const decimals = getOskDecimals();
+        const valBn = this.actualMaxStake;
+        const valStr = formatUnits(valBn, decimals);
+        
+        // Truncate to 4 decimals
+        const parts = valStr.split('.');
+        if (parts.length === 2 && parts[1].length > 4) {
+            return parts[0] + '.' + parts[1].substring(0, 4);
+        }
+        return parseFloat(valStr).toFixed(4); // Ensure 4 decimals format if less
+    },
     formattedBalance() {
-        return parseFloat(this.oskBalance).toFixed(4);
+        return this.formattedMaxStake; // Display the actual max limit, not just balance
     },
     durationOptions() {
       const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
@@ -222,13 +271,61 @@ export default {
             return true;
         }
     },
+    isInputTooLow() {
+        if (!this.newAmount) return false;
+        try {
+            const decimals = getOskDecimals();
+            const amountBn = ethers.parseUnits(this.newAmount, decimals);
+            const minBn = ethers.parseUnits(this.principal, decimals);
+            return amountBn < minBn;
+        } catch (e) {
+            return false;
+        }
+    },
+    isBalanceExceeded() {
+        if (!this.newAmount) return false;
+        try {
+            const decimals = getOskDecimals();
+            const amountBn = ethers.parseUnits(this.newAmount, decimals);
+            const maxBn = ethers.parseUnits(this.maxStakeAmount, decimals);
+            const balanceBn = ethers.parseUnits(this.oskBalance, decimals);
+            // Check if amount exceeds either wallet balance or max stake limit
+            return amountBn > maxBn || amountBn > balanceBn;
+        } catch (e) {
+            return false;
+        }
+    },
     reinvestButtonState() {
         if (!this.newAmount || this.selectedDuration === null) {
             return { text: this.t('redeem.confirmReinvest'), disabled: true };
         }
-        if (this.isAmountInvalid) {
-             return { text: this.t('inject.insufficientBalance'), disabled: true }; // Simplified error text
+        
+        if (this.isInputTooLow) {
+             return { text: this.t('redeem.minAmount', { amount: this.minReinvestAmount }), disabled: true };
         }
+
+        try {
+            const decimals = getOskDecimals();
+            const amountBn = ethers.parseUnits(this.newAmount, decimals);
+            const balanceBn = ethers.parseUnits(this.oskBalance || '0', decimals);
+            const maxBn = ethers.parseUnits(this.maxStakeAmount || '0', decimals);
+
+            if (amountBn > balanceBn) {
+                 return { text: this.t('inject.insufficientBalance'), disabled: true };
+            }
+
+            if (amountBn > maxBn) {
+                 return { text: this.t('inject.maxAmountExceeded', { amount: this.formattedMaxStake }), disabled: true };
+            }
+        } catch (e) {
+            // Fallback
+        }
+
+        if (this.isAmountInvalid) {
+             // Fallback for other invalid cases
+             return { text: this.t('inject.enterAmount'), disabled: true };
+        }
+
         if (this.isApproving) {
             return { text: this.t('inject.approving'), disabled: true };
         }
@@ -279,14 +376,17 @@ export default {
             showToast(this.t('redeem.dailyLimitReached'));
             return;
         }
-        
-        if (confirm(this.t('redeem.forfeitRewards') + '?')) {
-             const success = await unstakePrincipalOnly(this.stakeId);
-             if (success) {
-                 this.$emit('success');
-                 this.close();
-             }
-        }
+        this.mode = 'confirmPrincipal';
+    },
+    async doRedeemPrincipal() {
+         const success = await unstakePrincipalOnly(this.stakeId);
+         if (success) {
+             this.$emit('success');
+             this.close();
+         }
+    },
+    switchToReinvest() {
+        this.mode = 'reinvest';
     },
     handleReinvestSelect() {
         this.mode = 'reinvest';
@@ -305,6 +405,31 @@ export default {
       if (value !== event.target.value) {
           event.target.value = value;
       }
+    },
+    fillMax() {
+        try {
+            const decimals = getOskDecimals();
+            // Calculate min(balance, maxStakeLimit)
+            const balanceBn = ethers.parseUnits(this.oskBalance || '0', decimals);
+            const maxLimitBn = ethers.parseUnits(this.maxStakeAmount || '0', decimals);
+            
+            let maxBn = balanceBn;
+            if (maxLimitBn < balanceBn) {
+                maxBn = maxLimitBn;
+            }
+            
+            // Format back to string and truncate to 4 decimals
+            const maxStr = formatUnits(maxBn, decimals);
+            const parts = maxStr.split('.');
+            let val = maxStr;
+            if (parts.length === 2 && parts[1].length > 4) {
+                val = parts[0] + '.' + parts[1].substring(0, 4);
+            }
+            
+            this.newAmount = val;
+        } catch (e) {
+            console.error("Fill max error", e);
+        }
     },
     async handleReinvestAction() {
         const state = this.reinvestButtonState;
@@ -352,25 +477,49 @@ export default {
   position: relative;
   width: 90%;
   max-width: 480px;
-  padding: 32px;
+  padding: 24px;
   background: rgba(20, 20, 20, 0.95);
   border: 2px solid var(--border-light);
-  border-radius: 20px;
+  /* Hand-drawn Box */
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  overflow: visible;
+  
+  /* Scientific Diagram Corner Marks */
+  &::after {
+      content: '';
+      position: absolute;
+      top: 10px; left: 10px; right: 10px; bottom: 10px;
+      border: 1px dashed var(--text-muted);
+      border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+      pointer-events: none;
+      opacity: 0.3;
+  }
 }
 
 .title_holder {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   h3 {
-    font-size: 1.5rem;
-    color: #fff;
+    font-family: var(--font-heading);
+    font-size: 1.8rem;
     margin-bottom: 12px;
+    color: #fff;
+    font-weight: 400;
+    letter-spacing: 1px;
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
   }
+  
+  /* Chalk Underline */
   .cyber-line {
-      width: 60px; height: 2px;
+      width: 80px;
+      height: 2px;
       background: var(--primary-gold);
       margin: 0 auto;
+      /* Scribble effect */
+      border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+      transform: rotate(-1deg);
+      box-shadow: none;
   }
 }
 
@@ -381,6 +530,13 @@ export default {
   color: var(--text-secondary);
   font-size: 20px;
   cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+
+  &:hover {
+    color: var(--primary-gold);
+    transform: scale(1.1) rotate(90deg);
+  }
 }
 
 .selection-container {
@@ -393,7 +549,8 @@ export default {
     position: relative;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-light);
-    border-radius: 12px;
+    /* Irregular Box */
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
     padding: 20px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -401,7 +558,7 @@ export default {
     &:hover:not(.disabled) {
         border-color: var(--primary-gold);
         background: rgba(212, 175, 55, 0.05);
-        transform: translateY(-2px);
+        transform: translateY(-2px) rotate(0.5deg);
     }
     
     &.disabled {
@@ -412,22 +569,26 @@ export default {
     &.highlight {
         border-color: rgba(212, 175, 55, 0.5);
         background: rgba(212, 175, 55, 0.08);
+        transform: rotate(-0.5deg);
         
         &:hover {
             background: rgba(212, 175, 55, 0.12);
+            transform: translateY(-2px) rotate(-1deg);
         }
     }
 }
 
 .option-badge {
     position: absolute;
-    top: 0; right: 0;
+    top: -10px; right: 10px;
     background: var(--primary-gold);
     color: #000;
     font-size: 0.75rem;
     font-weight: 700;
     padding: 4px 12px;
-    border-radius: 0 12px 0 12px;
+    /* Hand drawn pill badge */
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .option-title {
@@ -492,40 +653,55 @@ export default {
 
 .back-btn {
     background: transparent;
-    border: none;
+    border: 2px solid var(--border-light);
+    /* Hand drawn pill */
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    padding: 8px 16px;
     color: var(--text-secondary);
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 6px;
     font-size: 0.9rem;
+    transition: all 0.3s ease;
+    font-weight: 600;
     
-    &:hover { color: #fff; }
+    &:hover { 
+        color: #fff;
+        border-color: #fff;
+        transform: rotate(-1deg);
+    }
 }
 
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+    margin-bottom: 20px;
 }
 
 .form-label {
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    font-family: var(--font-body);
 }
 
 .input-wrapper {
     display: flex;
     align-items: center;
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
-    background: rgba(0,0,0,0.2);
+    border: 2px solid var(--border-light);
+    /* Hand drawn box */
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    background: transparent;
     padding: 0 16px;
+    transition: all 0.3s ease;
     
     &.input-error { border-color: #FF3B30; }
     
     &:focus-within {
         border-color: var(--primary-gold);
+        background: rgba(212, 175, 55, 0.05);
+        transform: rotate(-0.5deg);
     }
 }
 
@@ -533,85 +709,202 @@ export default {
     flex: 1;
     background: transparent;
     border: none;
-    padding: 14px 0;
+    padding: 12px 0;
     color: #fff;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
+    font-family: var(--font-mono);
     outline: none;
 }
 
 .currency-label {
     color: var(--text-secondary);
     font-weight: 600;
+    font-family: var(--font-mono);
 }
 
 .balance-info {
-    text-align: right;
-    font-size: 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
     color: var(--text-muted);
+    font-family: var(--font-body);
+    margin-top: 6px;
+}
+
+.balance-text.text-error {
+    color: #FF3B30;
+}
+
+.balance-btn {
+    color: var(--primary-gold);
+    cursor: pointer;
+    font-weight: 600;
+    padding: 2px 8px;
+    background: transparent;
+    /* Irregular Border */
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    transition: all 0.3s ease;
+    font-family: var(--font-mono);
+    
+    &:hover {
+        background: rgba(212, 175, 55, 0.1);
+        border-color: var(--primary-gold);
+    }
 }
 
 .duration-button-group {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
 }
 
 .duration-btn {
     position: relative;
     background: transparent;
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
-    padding: 12px;
+    border: 2px solid var(--border-light);
+    /* Irregular Box */
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    padding: 16px 8px;
     color: var(--text-secondary);
     cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 4px;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     
-    &:hover { border-color: var(--primary-gold); background: rgba(212,175,55,0.05); }
+    &:hover { 
+        border-color: var(--primary-gold); 
+        background: rgba(212, 175, 55, 0.05); 
+        transform: translateY(-2px) rotate(1deg);
+    }
     
     &.active {
+        background: rgba(212, 175, 55, 0.1);
         border-color: var(--primary-gold);
-        background: rgba(212,175,55,0.1);
         color: #fff;
+        box-shadow: 0 0 15px rgba(212, 175, 55, 0.1);
+        transform: rotate(-1deg);
         
-        .duration-days { color: var(--primary-gold); }
+        .duration-days { color: var(--primary-gold); font-weight: 700; }
+        .duration-rate { opacity: 1; font-weight: 600; }
     }
     
     .active-icon {
         position: absolute;
         top: 6px; right: 6px;
         color: var(--primary-gold);
-        font-size: 10px;
+        font-size: 12px;
     }
 }
 
-.duration-days { font-weight: 600; }
-.duration-rate { font-size: 0.75rem; opacity: 0.8; }
+.duration-days { font-size: 1.1rem; font-weight: 500; font-family: var(--font-body); }
+.duration-rate { font-size: 0.75rem; opacity: 0.8; font-family: var(--font-mono); }
 
 .action-btn {
     width: 100%;
-    padding: 16px;
-    background: var(--primary-gold);
-    border: none;
-    border-radius: 8px;
-    color: #000;
-    font-weight: 700;
-    font-size: 1rem;
+    padding: 14px;
+    /* Hand drawn pill */
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    font-weight: 600;
+    font-size: 1.1rem;
     cursor: pointer;
     transition: all 0.3s ease;
+    font-family: var(--font-body);
     
-    &:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+    &.confirm-btn {
+        background: transparent; /* Outline style preferred for chalk */
+        border: 2px solid var(--primary-gold);
+        color: var(--primary-gold);
+        
+        &:hover:not(:disabled) {
+            background: rgba(212, 175, 55, 0.1);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+            transform: rotate(1deg);
+        }
+        
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.5);
+        }
+    }
+
+    &.primary-btn {
+        background: var(--primary-gold);
+        color: #000;
+        border: none;
+        
+        &:hover {
+             transform: scale(1.02);
+             box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+        }
     }
     
-    &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        background: #333;
-        color: #666;
+    &.secondary-btn {
+        background: transparent;
+        border: 1px solid var(--text-muted);
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        
+        &:hover {
+            border-color: #fff;
+            color: #fff;
+        }
+    }
+}
+
+.confirm-view {
+    text-align: center;
+    padding: 20px 0;
+    
+    .confirm-icon-wrapper {
+        font-size: 3rem;
+        color: var(--primary-gold);
+        margin-bottom: 20px;
+        opacity: 0.8;
+    }
+    
+    .confirm-text {
+        font-size: 1.1rem;
+        margin-bottom: 30px;
+        line-height: 1.5;
+        padding: 0 10px;
+    }
+    
+    .button-group-row {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 20px;
+        
+        .small-btn {
+            flex: 0.6;
+        }
+        
+        .large-btn {
+            flex: 1.4;
+            font-size: 1.1rem;
+            padding: 16px;
+        }
+    }
+    
+    .back-link {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        text-decoration: underline;
+        cursor: pointer;
+        font-size: 0.9rem;
+        
+        &:hover {
+            color: #fff;
+        }
     }
 }
 </style>
