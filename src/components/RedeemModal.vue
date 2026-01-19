@@ -53,25 +53,32 @@
             </div>
         </div>
 
-        <!-- Confirm Principal Only -->
+        <!-- Confirm Principal View (Replaces options) -->
         <div v-else-if="mode === 'confirmPrincipal'" class="confirm-view">
+             <div class="confirm-header-top">
+                <button class="back-link-top" @click="mode = 'select'">
+                    <i class="icon icon-arrow-left"></i> {{ t('redeem.back') }}
+                </button>
+             </div>
+
              <div class="confirm-icon-wrapper">
                  <i class="icon-warning"></i>
              </div>
-             <p class="confirm-text">
-                 {{ t('redeem.confirmForfeit', { amount: lostRewardDisplay }) }}
-             </p>
+             
+             <div class="confirm-text-container">
+                <p>{{ t('redeem.confirmForfeitLine1') }}</p>
+                <p class="highlight-loss">{{ lostRewardDisplay }} {{ t('redeem.rewards') }}</p>
+                <p>{{ t('redeem.confirmForfeitLine2') }}</p>
+             </div>
              
              <div class="button-group-row">
                  <button class="action-btn secondary-btn small-btn" @click="doRedeemPrincipal">
-                     {{ t('referrer.confirm') }}
+                     {{ t('redeem.confirmRedeem') }}
                  </button>
                  <button class="action-btn primary-btn large-btn" @click="switchToReinvest">
                      {{ t('redeem.goToReinvest') }}
                  </button>
              </div>
-             
-             <button class="back-link" @click="mode = 'select'">{{ t('redeem.back') }}</button>
         </div>
 
         <!-- Reinvest Form -->
@@ -461,6 +468,54 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.confirm-header-top {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 10px;
+}
+
+.back-link-top {
+    background: transparent;
+    border: 1px solid var(--border-light);
+    /* Irregular Box matching other elements */
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    transition: all 0.3s ease;
+    
+    &:hover {
+        color: #fff;
+        border-color: #fff;
+        transform: translateX(-2px) rotate(-1deg);
+    }
+    
+    i {
+        font-size: 0.8rem;
+    }
+}
+
+.confirm-text-container {
+    margin-bottom: 30px;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    
+    p {
+        margin: 4px 0;
+    }
+    
+    .highlight-loss {
+        color: #FF3B30;
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+}
+
 .modal-overlay {
   position: fixed;
   top: 0; left: 0;
@@ -814,6 +869,10 @@ export default {
     cursor: pointer;
     transition: all 0.3s ease;
     font-family: var(--font-body);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
     
     &.confirm-btn {
         background: transparent; /* Outline style preferred for chalk */
@@ -884,13 +943,16 @@ export default {
         margin-bottom: 20px;
         
         .small-btn {
-            flex: 0.6;
+            flex: 1;
+            white-space: nowrap;
+            padding: 14px 10px;
         }
         
         .large-btn {
-            flex: 1.4;
+            flex: 1.2;
             font-size: 1.1rem;
-            padding: 16px;
+            padding: 14px;
+            white-space: nowrap;
         }
     }
     

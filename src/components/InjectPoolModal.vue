@@ -472,6 +472,10 @@ export default {
           break;
         case 'stake':
           console.log("[注入资产弹窗] 执行操作: 直接进入质押流程");
+          console.log("[注入资产弹窗] 确认参数:", {
+            amount: this.amount,
+            duration: this.selectedDuration
+          });
           this.$emit('confirm', {
             amount: this.amount,
             duration: this.selectedDuration

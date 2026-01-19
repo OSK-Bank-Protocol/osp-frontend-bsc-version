@@ -286,9 +286,9 @@ export const getUserLevel = async () => {
                 getTeamKpiBigNumber(),
                 getSelfStake()
             ]);
-            console.log(`[UserLevel] Checking level for ${walletState.address}: KPI=${kpi}, SelfStake=${selfStake}`);
+            console.log(`[UserLevel Debug] Checking level for ${walletState.address}: KPI=${kpi}, SelfStake=${selfStake}`);
             const level = await stakingContract.getLevel(kpi, selfStake);
-            console.log(`[UserLevel] Result: Level ${level}`);
+            console.log(`[UserLevel Debug] Result: Level ${level}`);
             return Number(level);
         } catch (error) {
             console.error("Error fetching user level:", error);
@@ -882,7 +882,13 @@ export const unstakeWithBonus = async (index, newAmount, newStakeIndex) => {
              amountOutMin = (expectedOSP * 90n) / 100n; // 10% slippage
         }
         
-        console.log(`[Reinvest] unstakeWithBonus params: index=${index}, amount=${amountInWei} (${newAmount}), minOut=${amountOutMin}, stakeIndex=${newStakeIndex}`);
+        console.log(`[Reinvest Debug] unstakeWithBonus params:`, {
+            index: index,
+            amountInWei: amountInWei.toString(),
+            amountDisplay: newAmount,
+            amountOutMin: amountOutMin.toString(),
+            newStakeIndex: newStakeIndex
+        });
 
         const tx = await stakingContract.unstakeWithBonus(
             index,
