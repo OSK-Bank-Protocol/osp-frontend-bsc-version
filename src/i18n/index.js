@@ -137,6 +137,7 @@ const languagePacks = {
     'referrer.loading': '加载中...',
     'referrer.cancel': '取消',
     'referrer.confirm': '确认推荐人并质押',
+    'referrer.checkAddress': '【请仔细核对推荐人地址】',
     
     // Toast Notifications
     'toast.connectWalletFirst': '请先连接并授权您的钱包',
@@ -365,6 +366,7 @@ const languagePacks = {
     'referrer.loading': '加載中...',
     'referrer.cancel': '取消',
     'referrer.confirm': '確認推薦人並質押',
+    'referrer.checkAddress': '【請仔細核對推薦人地址】',
     
     // Testimonial Section
     'testimonial.connectFuture': '連接未來',
@@ -596,6 +598,7 @@ const languagePacks = {
     'referrer.loading': 'Loading...',
     'referrer.cancel': 'Cancel',
     'referrer.confirm': 'Confirm Referrer and Stake',
+    'referrer.checkAddress': '[Please carefully check the referrer address]',
     
     // Testimonial Section
     'testimonial.connectFuture': 'Connect Future',
@@ -819,6 +822,7 @@ const languagePacks = {
     'referrer.loading': '読み込み中...',
     'referrer.cancel': 'キャンセル',
     'referrer.confirm': '紹介者を確認してステーキング',
+    'referrer.checkAddress': '【紹介者アドレスを注意深く確認してください】',
     
     // Testimonial Section
     'testimonial.connectFuture': '未来を接続',
@@ -1042,6 +1046,7 @@ const languagePacks = {
     'referrer.loading': '로딩 중...',
     'referrer.cancel': '취소',
     'referrer.confirm': '추천인 확인 및 스테이킹',
+    'referrer.checkAddress': '【추천인 주소를 주의 깊게 확인하세요】',
     
     // Testimonial Section
     'testimonial.connectFuture': '미래 연결',
