@@ -173,7 +173,11 @@ const fetchHeroData = async () => {
     console.log(`[HeroSection] User Level Updated: ${level}`);
 
     if (level > 0) {
-      userLevel.value = 'S' + level;
+      if (level == 8) {
+        userLevel.value = 'S7';
+      } else {
+        userLevel.value = 'S' + level;
+      }
     } else {
       userLevel.value = '';
     }
