@@ -50,7 +50,7 @@
                             <div class="col-action">
                                 <button 
                                     @click="claim(level.id)" 
-                                    :disabled="parseFloat(level.rewards) <= 0 || isClaiming[level.id]" 
+                                    :disabled="isRewardZero(level.rewards) || isClaiming[level.id]" 
                                     class="mini-claim-btn"
                                     :class="{ 'processing': isClaiming[level.id] }"
                                 >
@@ -83,7 +83,7 @@
                     </div>
                     <button 
                         @click="claimDividendReward" 
-                        :disabled="parseFloat(dividend_rewards) <= 0 || isClaimingDividendReward" 
+                        :disabled="isRewardZero(dividend_rewards) || isClaimingDividendReward" 
                         class="action-btn primary-btn full-width"
                     >
                         {{ isClaimingDividendReward ? t('claim.claiming') : t('claim.claim') }}
@@ -130,6 +130,7 @@ import {
 } from '../services/contracts';
 import { t } from '@/i18n';
 import { showToast } from '../services/notification';
+import { ethers } from 'ethers';
 
 const emit = defineEmits(['close']);
 const isLoading = ref(true);
@@ -165,6 +166,23 @@ const truncatedDividendRewards = computed(() => {
     const truncated = Math.floor(num * 10000) / 10000;
     return truncated.toFixed(4);
 });
+
+import { getOskDecimals } from '../services/contracts';
+
+const isRewardZero = (val) => {
+    try {
+        if (!val) return true;
+        // Use BigInt check: parse string to BigInt
+        // Assuming val is like "123.456", formatUnits output.
+        // To check strict > 0, we can just check if parseFloat > 0, 
+        // OR better: check if it contains any non-zero digit.
+        // But the safest given formatUnits output is indeed parsing it back or just float.
+        // Given formatUnits returns standard decimal string:
+        return parseFloat(val) <= 0;
+    } catch (e) {
+        return true;
+    }
+};
 
 const levels = computed(() => [
     { id: 5, tag: 'S5', kpiMet: s5_kpiMet.value, rewards: s5_rewards.value },
@@ -208,11 +226,10 @@ const fetchRewardData = async () => {
         dividend_rewards.value = dividendRewards;
         isPreacher.value = preacherStatus;
 
-        const nodeRewardsNum = parseFloat(nodeRewards);
-        showNodePointSection.value = Math.floor(nodeRewardsNum * 10000) > 0;
-
-        const dividendRewardsNum = parseFloat(dividendRewards);
-        showDividendPointSection.value = Math.floor(dividendRewardsNum * 10000) > 0;
+        // Use string comparison or regex for show flags to avoid float precision issues
+        // Check if string has any non-zero digit
+        showNodePointSection.value = /[1-9]/.test(nodeRewards);
+        showDividendPointSection.value = /[1-9]/.test(dividendRewards);
 
     } catch (error) {
         console.error("Failed to fetch reward data:", error);

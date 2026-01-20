@@ -97,7 +97,8 @@ import {
   getOskBalance,
   checkAllClaimableRewards,
   getEffectiveMaxStakeAmount,
-  getUserPrincipalBalance
+  getUserPrincipalBalance,
+  getOskDecimals
 } from '../services/contracts';
 import {
   showToast
@@ -107,6 +108,7 @@ import {
     watch
 } from 'vue';
 import { t } from '@/i18n';
+import { ethers } from 'ethers';
 
 
 export default {
@@ -209,15 +211,18 @@ export default {
       // 1. Initial Check
       console.log(`[排队系统] 初始额度检查: 正在获取当前最大允许额度...`);
       const maxAllowedStr = await getEffectiveMaxStakeAmount(true);
-      const maxAllowed = parseFloat(maxAllowedStr);
       
-      if (parseFloat(checkAmount) > maxAllowed) {
-         console.log(`[排队系统] 初始检查失败: 用户输入 ${checkAmount} > 当前允许最大值 ${maxAllowed}`);
+      const decimals = getOskDecimals();
+      const checkAmountBn = ethers.parseUnits(checkAmount.toString(), decimals);
+      const maxAllowedBn = ethers.parseUnits(maxAllowedStr, decimals);
+      
+      if (checkAmountBn > maxAllowedBn) {
+         console.log(`[排队系统] 初始检查失败: 用户输入 ${checkAmount} > 当前允许最大值 ${maxAllowedStr}`);
          showToast(t('toast.highStakingVolume'));
          this.isStaking = false;
          return;
       }
-      console.log(`[排队系统] 初始检查通过: 用户输入 ${checkAmount} <= 当前允许最大值 ${maxAllowed}`);
+      console.log(`[排队系统] 初始检查通过: 用户输入 ${checkAmount} <= 当前允许最大值 ${maxAllowedStr}`);
 
       if (!ENABLE_STAKING_QUEUE) {
         await onSuccess();
@@ -231,6 +236,7 @@ export default {
       // 1. Get User Principal Balance
       let userPrincipal = 0;
       try {
+          // Keep using float for time calculation as it's not financial critical and simpler for math
           const principalStr = await getUserPrincipalBalance();
           userPrincipal = parseFloat(principalStr);
       } catch (e) {
@@ -268,15 +274,15 @@ export default {
             // 3. Post-Queue Check
             console.log("[排队系统] 倒计时结束，正在进行二次额度检查...");
             const maxAllowedStrFinal = await getEffectiveMaxStakeAmount(true);
-            const maxAllowedFinal = parseFloat(maxAllowedStrFinal);
+            const maxAllowedFinalBn = ethers.parseUnits(maxAllowedStrFinal, decimals);
             
-            if (parseFloat(checkAmount) > maxAllowedFinal) {
-                console.log(`[排队系统] 二次检查失败: 用户输入 ${checkAmount} > 当前允许最大值 ${maxAllowedFinal}`);
+            if (checkAmountBn > maxAllowedFinalBn) {
+                console.log(`[排队系统] 二次检查失败: 用户输入 ${checkAmount} > 当前允许最大值 ${maxAllowedStrFinal}`);
                 this.isQueueModalVisible = false;
                 showToast(t('toast.highStakingVolume'));
                 this.isStaking = false;
             } else {
-                console.log(`[排队系统] 二次检查通过: 用户输入 ${checkAmount} <= 当前允许最大值 ${maxAllowedFinal}`);
+                console.log(`[排队系统] 二次检查通过: 用户输入 ${checkAmount} <= 当前允许最大值 ${maxAllowedStrFinal}`);
                 this.isQueueModalVisible = false;
                 // Add a small delay for UI transition
                 setTimeout(async () => {
@@ -296,8 +302,15 @@ export default {
       // Final real-time balance check
       const realTimeBalance = await getOskBalance();
       const amountToStake = this.injectionData.amount;
-      if (parseFloat(realTimeBalance) < parseFloat(amountToStake)) {
-        showToast(t('toast.insufficientBalance', { balance: parseFloat(realTimeBalance).toFixed(4) }));
+      
+      const decimals = getOskDecimals();
+      const balanceBn = ethers.parseUnits(realTimeBalance, decimals);
+      const stakeAmountBn = ethers.parseUnits(amountToStake.toString(), decimals);
+
+      if (balanceBn < stakeAmountBn) {
+        // Display simplified balance for toast
+        const displayBal = parseFloat(realTimeBalance).toFixed(4);
+        showToast(t('toast.insufficientBalance', { balance: displayBal }));
         this.isStaking = false;
         return;
       }
@@ -345,8 +358,14 @@ export default {
       // Final real-time balance check
       const realTimeBalance = await getOskBalance();
       const amountToStake = this.injectionData.amount;
-      if (parseFloat(realTimeBalance) < parseFloat(amountToStake)) {
-        showToast(t('toast.insufficientBalance', { balance: parseFloat(realTimeBalance).toFixed(4) }));
+      
+      const decimals = getOskDecimals();
+      const balanceBn = ethers.parseUnits(realTimeBalance, decimals);
+      const stakeAmountBn = ethers.parseUnits(amountToStake.toString(), decimals);
+
+      if (balanceBn < stakeAmountBn) {
+        const displayBal = parseFloat(realTimeBalance).toFixed(4);
+        showToast(t('toast.insufficientBalance', { balance: displayBal }));
         this.isStaking = false;
         return;
       }

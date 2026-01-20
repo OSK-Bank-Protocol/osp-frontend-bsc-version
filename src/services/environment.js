@@ -44,7 +44,7 @@ export const TEMPORARY_STAKE_LIMIT = 10;
 /**
  * Enable single purchase limit configuration
  */
-export const ENABLE_SINGLE_PURCHASE_LIMIT = true;
+export const ENABLE_SINGLE_PURCHASE_LIMIT = false;
 
 /**
  * Single purchase limit configuration

@@ -78,7 +78,6 @@ export default {
             tokenpocket: '/asset/images/wallet/tp-logo.png',
             okx: '/asset/images/wallet/okx-logo.png',
             binance: '/asset/images/wallet/binance-logo.png',
-            tronlink: '/asset/images/wallet/TRONLOGO.jpeg',
         };
         return icons[walletId] || '/asset/images/wallet/default-icon.png';
     };

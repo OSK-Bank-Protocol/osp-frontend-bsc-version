@@ -20,13 +20,21 @@
           <label class="form-label">{{ t('referrer.addressLabel') }}</label>
           <div class="address-box">
             <span v-if="isLoading">{{ t('referrer.loading') }}</span>
-            <span v-else>{{ formattedReferrerAddress }}</span>
+            <div v-else class="address-display">
+               <span class="normal">0x</span>
+               <span class="highlight">{{ addressHead }}</span>
+               <span class="normal">{{ addressBody }}</span>
+               <span class="highlight">{{ addressTail }}</span>
+            </div>
           </div>
+          <p class="warning-text">⚠️ {{ t('referrer.checkAddress') }}</p>
         </div>
 
         <div class="button-group">
           <button class="btn-ip btn-cancel" @click="$emit('close')">{{ t('referrer.cancel') }}</button>
-          <button class="btn-ip btn-confirm" @click="handleConfirm" :disabled="isLoading || !pendingReferrer">{{ t('referrer.confirm') }}</button>
+          <button class="btn-ip btn-confirm" @click="handleConfirm" :disabled="isLoading || !pendingReferrer || countdown > 0">
+            {{ countdown > 0 ? `${t('referrer.confirm')} (${countdown}s)` : t('referrer.confirm') }}
+          </button>
         </div>
       </div>
     </div>
@@ -37,16 +45,10 @@
 import {
   getRootReferrer
 } from '../services/contracts';
-import {
-  formatAddress
-} from '../services/wallet';
 import { t } from '@/i18n';
 
 export default {
   name: 'ConfirmReferrerModal',
-  props: {
-    // referrerAddress prop is no longer needed as the component will fetch it.
-  },
   emits: ['close', 'confirm'],
   setup() {
     return {
@@ -57,14 +59,24 @@ export default {
     return {
       pendingReferrer: null,
       isLoading: true,
+      countdown: 10,
+      timer: null,
     };
   },
   computed: {
-    formattedReferrerAddress() {
-      if (!this.pendingReferrer) {
-        return 'N/A';
-      }
-      return formatAddress(this.pendingReferrer);
+    addressHead() {
+        if (!this.pendingReferrer) return '';
+        // 0x + 4 chars. We want the 4 chars AFTER 0x.
+        // Assuming address starts with 0x...
+        return this.pendingReferrer.slice(2, 6);
+    },
+    addressBody() {
+        if (!this.pendingReferrer) return '';
+        return this.pendingReferrer.slice(6, -4);
+    },
+    addressTail() {
+        if (!this.pendingReferrer) return '';
+        return this.pendingReferrer.slice(-4);
     }
   },
   methods: {
@@ -74,7 +86,7 @@ export default {
       const urlParams = new URLSearchParams(window.location.search);
       const refFromUrl = urlParams.get('ref');
 
-      if (refFromUrl && refFromUrl.startsWith('T') && refFromUrl.length >= 33) {
+      if (refFromUrl && refFromUrl.startsWith('0x') && refFromUrl.length >= 42) {
         console.log(`[确认推荐人弹窗] 成功从URL中解析到推荐人地址: ${refFromUrl}`);
         this.pendingReferrer = refFromUrl;
       } else {
@@ -84,8 +96,21 @@ export default {
         console.log(`[确认推荐人弹窗] 成功从合约获取到根推荐人地址: ${this.pendingReferrer}`);
       }
       this.isLoading = false;
+      this.startCountdown();
+    },
+    startCountdown() {
+        this.countdown = 10;
+        if (this.timer) clearInterval(this.timer);
+        this.timer = setInterval(() => {
+            if (this.countdown > 0) {
+                this.countdown--;
+            } else {
+                clearInterval(this.timer);
+            }
+        }, 1000);
     },
     handleConfirm() {
+      if (this.countdown > 0) return;
       // Pass the determined referrer address back to the parent
       if (this.pendingReferrer) {
         console.log(`[确认推荐人弹窗] 用户已确认推荐人地址: ${this.pendingReferrer}, 进入最终质押流程`);
@@ -95,11 +120,47 @@ export default {
   },
   mounted() {
     this.fetchReferrer();
+  },
+  beforeUnmount() {
+      if (this.timer) clearInterval(this.timer);
   }
 };
 </script>
 
 <style scoped lang="scss">
+/* ... existing styles ... */
+.address-display {
+    /* display: flex;  Removed to avoid fragmented look */
+    text-align: center;
+    word-break: break-all;
+    font-family: var(--font-mono);
+    
+    .highlight {
+        color: var(--primary-gold);
+        font-weight: 800;
+        /* font-size: 1.1em; Kept same size for continuity */
+    }
+    
+    .normal {
+        color: var(--text-muted);
+    }
+}
+
+.warning-text {
+    color: var(--primary-gold);
+    font-size: 0.9rem;
+    text-align: center;
+    margin-top: 12px;
+    font-family: var(--font-body);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.8; }
+    50% { opacity: 1; }
+    100% { opacity: 0.8; }
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -226,14 +287,15 @@ export default {
     flex: 1;
     text-align: center;
     display: flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 12px;
+    padding: 12px 14px; /* Reduced padding */
     /* Hand drawn pill */
     border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
     transition: all 0.3s ease;
-    font-size: 1rem;
+    font-size: 0.95rem; /* Slightly smaller font to fit one line */
     font-weight: 600;
     cursor: pointer;
     font-family: var(--font-body);
+    white-space: nowrap; /* Force single line */
 }
 
 .btn-cancel {
