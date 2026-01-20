@@ -194,14 +194,14 @@ export default {
             const p = parseFloat(this.principal);
             const t = parseFloat(this.totalValue);
             const lost = t - p;
-            return lost > 0 ? lost.toFixed(4) + ' OSP' : '0.0000 OSP';
+            return lost > 0 ? lost.toFixed(4) + ' OSK' : '0.0000 OSK';
         } catch (e) {
-            return '0.0000 OSP';
+            return '0.0000 OSK';
         }
     },
     totalValueDisplay() {
         try {
-            return parseFloat(this.totalValue).toFixed(4) + ' OSP';
+            return parseFloat(this.totalValue).toFixed(4) + ' OSK';
         } catch (e) {
             return this.totalValue;
         }
