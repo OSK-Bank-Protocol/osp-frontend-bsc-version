@@ -101,7 +101,8 @@ import {
   TEMPORARY_STAKE_LIMIT,
   ENABLE_SINGLE_PURCHASE_LIMIT,
   SINGLE_PURCHASE_LIMIT,
-  APP_ENV
+  APP_ENV,
+  TIME_UNIT_CONFIG
 } from '../services/environment';
 import {
   showToast
@@ -133,8 +134,32 @@ export default {
   },
   computed: {
     durationOptions() {
-      // Always use Days for display, even in Dev/Test environment
-      // The actual duration in seconds (handled in contracts.js) might still be short for testing
+      // Use Minutes if configured, otherwise Days
+      if (TIME_UNIT_CONFIG === 'minute') {
+          return [
+            {
+              value: 0,
+              days: this.t('inject.minutes7'),
+              rate: this.t('inject.rate7')
+            },
+            {
+              value: 1,
+              days: this.t('inject.minutes15'),
+              rate: this.t('inject.rate15')
+            },
+            {
+              value: 2,
+              days: this.t('inject.minutes30'),
+              rate: this.t('inject.rate30')
+            },
+            {
+              value: 3,
+              days: this.t('inject.minutes45'),
+              rate: this.t('inject.rate45')
+            }
+          ];
+      }
+
       return [
         {
           value: 0,

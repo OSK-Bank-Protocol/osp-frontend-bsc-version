@@ -121,6 +121,9 @@ const languagePacks = {
     'redeem.confirmForfeitLine2': '来获取本金？',
     'redeem.confirmRedeem': '确定赎回本金',
     'redeem.goToReinvest': '去复投',
+    'redeem.splitNotice': '订单拆分为：',
+    'redeem.splitExplanation': '订单金额超过单笔限额，将拆分为多笔订单复投：',
+    'redeem.confirmSplit': '确认复投并赎回',
     
     // Claim Reward Modal
     'claim.title': '成就奖励',
@@ -353,6 +356,9 @@ const languagePacks = {
     'redeem.confirmForfeitLine2': '來獲取本金？',
     'redeem.confirmRedeem': '確定贖回本金',
     'redeem.goToReinvest': '去復投',
+    'redeem.splitNotice': '訂單拆分為：',
+    'redeem.splitExplanation': '訂單金額超過單筆限額，將拆分為多筆訂單復投：',
+    'redeem.confirmSplit': '確認復投並贖回',
     
     // Claim Reward Modal
     'claim.title': '領取您的成就獎勵',
@@ -588,6 +594,9 @@ const languagePacks = {
     'redeem.confirmForfeitLine2': 'to get principal?',
     'redeem.confirmRedeem': 'Confirm Redeem',
     'redeem.goToReinvest': 'Go to Reinvest',
+    'redeem.splitNotice': 'Split into:',
+    'redeem.splitExplanation': 'Amount exceeds single limit. Will be split into multiple orders:',
+    'redeem.confirmSplit': 'Confirm Reinvest & Redeem',
     
     // Claim Reward Modal
     'claim.title': 'Claim Your Achievement Rewards',
@@ -815,6 +824,9 @@ const languagePacks = {
     'redeem.confirmForfeitLine2': '元本を取得しますか？',
     'redeem.confirmRedeem': '償還を確認',
     'redeem.goToReinvest': '再投資へ',
+    'redeem.splitNotice': '分割:',
+    'redeem.splitExplanation': '金額が単一の制限を超えています。複数の注文に分割されます:',
+    'redeem.confirmSplit': '再投資して償還を確認',
     
     // Claim Reward Modal
     'claim.title': '実績報酬を受け取る',
@@ -1042,6 +1054,9 @@ const languagePacks = {
     'redeem.confirmForfeitLine2': '원금을 받으시겠습니까?',
     'redeem.confirmRedeem': '상환 확인',
     'redeem.goToReinvest': '재투자로 이동',
+    'redeem.splitNotice': '다음으로 분할:',
+    'redeem.splitExplanation': '금액이 단일 한도를 초과합니다. 여러 주문으로 분할됩니다:',
+    'redeem.confirmSplit': '재투자 및 상환 확인',
 
     // Claim Reward Modal
     'claim.title': '성취 보상 받기',

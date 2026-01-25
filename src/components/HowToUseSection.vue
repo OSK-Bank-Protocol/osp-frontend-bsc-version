@@ -147,7 +147,7 @@ import {
   rewardOfSlot,
   formatUnits
 } from '../services/contracts';
-import { APP_ENV } from '../services/environment';
+import { APP_ENV, TIME_UNIT_CONFIG } from '../services/environment';
 import CountdownTimer from './CountdownTimer.vue';
 import RedeemModal from './RedeemModal.vue';
 import { t } from '@/i18n';
@@ -193,11 +193,17 @@ const fetchStakingData = async () => {
         totalItems.value = Number(total);
         const decimals = getOskDecimals();
         const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
-        const stakeDurations = isDev 
-            ? [604800, 1296000, 2592000, 3888000, 5184000] // Dev uses Days: 7, 15, 30, 45, 60 days
-            : [604800, 1296000, 2592000, 3888000, 5184000]; // Prod: 7, 15, 30, 45, 60 days
+        
+        let stakeDurations;
+        if (TIME_UNIT_CONFIG === 'minute') {
+             // Minute mode: 7, 15, 30, 45, 60 minutes
+             stakeDurations = [420, 900, 1800, 2700, 3600];
+        } else {
+             // Day mode: 7, 15, 30, 45, 60 days
+             stakeDurations = [604800, 1296000, 2592000, 3888000, 5184000];
+        }
 
-        console.log(`[HowToUse Debug] isDev=${isDev}, Durations=${stakeDurations}`);
+        console.log(`[HowToUse Debug] isDev=${isDev}, TimeUnit=${TIME_UNIT_CONFIG}, Durations=${stakeDurations}`);
 
         let liveRewards = [];
         if (status === 0 && pageRecords.length > 0) {
@@ -332,8 +338,10 @@ const nextPage = () => {
 };
 
 const getDurationLabel = (index) => {
-    // Always use Days keys
-    const keys = ['inject.days7', 'inject.days15', 'inject.days30', 'inject.days45', 'inject.days60'];
+    // Select keys based on configuration
+    const keys = TIME_UNIT_CONFIG === 'minute'
+        ? ['inject.minutes7', 'inject.minutes15', 'inject.minutes30', 'inject.minutes45', 'inject.minutes60']
+        : ['inject.days7', 'inject.days15', 'inject.days30', 'inject.days45', 'inject.days60'];
     
     // Check if translation exists, otherwise fall back to hardcoded string to avoid empty display
     const key = keys[index] || keys[0];
@@ -341,8 +349,9 @@ const getDurationLabel = (index) => {
     
     // If translation returns the key itself (meaning missing translation), return a fallback
     if (translation === key) {
-        const days = [7, 15, 30, 45, 60];
-        return `${days[index] || 7} Days`;
+        const values = [7, 15, 30, 45, 60];
+        const unit = TIME_UNIT_CONFIG === 'minute' ? 'Minutes' : 'Days';
+        return `${values[index] || 7} ${unit}`;
     }
     
     return translation;

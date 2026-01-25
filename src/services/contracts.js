@@ -1,5 +1,5 @@
 import { walletState } from './wallet';
-import { APP_ENV, ENABLE_SINGLE_PURCHASE_LIMIT, SINGLE_PURCHASE_LIMIT } from './environment';
+import { APP_ENV, ENABLE_SINGLE_PURCHASE_LIMIT, SINGLE_PURCHASE_LIMIT, TIME_UNIT_CONFIG } from './environment';
 import { toRaw } from 'vue';
 import { showToast } from '../services/notification';
 import { t } from '../i18n';
@@ -522,11 +522,17 @@ export const getUserStakingData = async () => {
     const validResults = results.filter(r => r !== null);
     
     const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
-    const stakeDurations = isDev 
-      ? [604800, 1296000, 2592000, 3888000, 5184000] // Dev env now also uses Days: 7, 15, 30, 45, 60 days
-      : [604800, 1296000, 2592000, 3888000, 5184000]; // Prod: 7, 15, 30, 45, 60 days
+    let stakeDurations;
+    
+    if (TIME_UNIT_CONFIG === 'minute') {
+         // Minute mode: 7, 15, 30, 45, 60 minutes
+         stakeDurations = [420, 900, 1800, 2700, 3600];
+    } else {
+         // Day mode: 7, 15, 30, 45, 60 days
+         stakeDurations = [604800, 1296000, 2592000, 3888000, 5184000];
+    }
 
-    console.log(`[Staking Debug] Current ENV: ${APP_ENV}, isDev: ${isDev}`);
+    console.log(`[Staking Debug] Current ENV: ${APP_ENV}, isDev: ${isDev}, TimeUnit: ${TIME_UNIT_CONFIG}`);
     console.log(`[Staking Debug] Stake Durations:`, stakeDurations);
 
     const formattedData = validResults.map((item) => {
@@ -634,6 +640,18 @@ export const getOskBalance = async () => {
       try {
         const balance = await oskContract.balanceOf(walletState.address);
         return formatUnits(balance, getOskDecimals());
+      } catch (error) {
+        return "0";
+      }
+  }, SHORT_CACHE_TTL);
+};
+
+export const getOspBalance = async () => {
+  if (!ospContract || !walletState.address) return "0";
+  return cachedCall(`ospBalance_${walletState.address}`, async () => {
+      try {
+        const balance = await ospContract.balanceOf(walletState.address);
+        return formatUnits(balance, 18);
       } catch (error) {
         return "0";
       }
@@ -866,6 +884,18 @@ export const getMaxUnstakeAmount = async (forceRefresh = false) => {
   }, CACHE_TTL, forceRefresh);
 };
 
+export const getMaxStakeAbsLimit = async (forceRefresh = false) => {
+  if (!stakingContract) return "0";
+  return cachedCall('maxStakeAbsLimit', async () => {
+    try {
+        const limit = await stakingContract.maxStakeAbsLimit();
+        return formatUnits(limit, getOskDecimals());
+    } catch (error) {
+        return "0";
+    }
+  }, CACHE_TTL, forceRefresh);
+};
+
 export const unstakePrincipalOnly = async (index) => {
   if (!stakingContract) return false;
   try {
@@ -881,6 +911,48 @@ export const unstakePrincipalOnly = async (index) => {
     showToast(errorMsg);
     return false;
   }
+};
+
+export const unstakeWithBonusSplit = async (index, amountDisplay, amountsArrayWei, newStakeIndex) => {
+    if (!stakingContract) return false;
+    try {
+        const decimals = getOskDecimals();
+        const amountStr = parseUnits(amountDisplay, decimals);
+        const amountInWei = BigInt(amountStr);
+        
+        // Slippage calc
+        const expectedOSP = await getExpectedOSPAmount(amountInWei / 2n);
+        let amountOutMin = 0n;
+        if (expectedOSP > 0n) {
+             amountOutMin = (expectedOSP * 90n) / 100n; // 10% slippage
+        }
+        
+        console.log(`[Reinvest Split Debug] unstakeWithBonusSplit params:`, {
+            index: index,
+            amountsArray: amountsArrayWei.map(a => a.toString()),
+            totalAmount: amountInWei.toString(),
+            amountOutMin: amountOutMin.toString(),
+            newStakeIndex: newStakeIndex
+        });
+
+        const tx = await stakingContract.unstakeWithBonusSplit(
+            index,
+            amountsArrayWei,
+            amountOutMin,
+            newStakeIndex
+        );
+        
+        showToast(t('toast.txSent'));
+        await tx.wait();
+        showToast(t('toast.reinvestSuccess'));
+        return true;
+    } catch (error) {
+        console.error("Unstake With Bonus Split error:", error);
+        let errorMsg = t('toast.unstakeFailed');
+        if (error && error.reason) errorMsg = error.reason;
+        showToast(errorMsg);
+        return false;
+    }
 };
 
 export const unstakeWithBonus = async (index, newAmount, newStakeIndex) => {

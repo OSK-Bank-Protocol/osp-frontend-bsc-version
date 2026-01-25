@@ -131,12 +131,49 @@
                 </div>
             </div>
 
+            <!-- Split Hint -->
+            <!-- <div v-if="splitPlan.length > 0" class="split-hint">
+                <i class="icon-split"></i>
+                <span>{{ t('redeem.splitNotice') }} {{ splitPlan.join(', ') }} OSK</span>
+            </div> -->
+
             <!-- Action Buttons -->
             <div class="button-group">
                 <button @click="handleReinvestAction" class="action-btn confirm-btn" :disabled="reinvestButtonState.disabled">
                     {{ reinvestButtonState.text }}
                 </button>
             </div>
+        </div>
+
+        <!-- Split Confirmation View -->
+        <div v-else-if="mode === 'splitConfirm'" class="confirm-view">
+             <div class="confirm-header-top">
+                <button class="back-link-top" @click="mode = 'reinvest'">
+                    <i class="icon icon-arrow-left"></i> {{ t('redeem.back') }}
+                </button>
+             </div>
+
+             <div class="confirm-icon-wrapper">
+                 <i class="icon-split"></i>
+             </div>
+             
+             <div class="confirm-text-container">
+                <!-- <p>{{ t('redeem.splitNotice') }}</p> -->
+                <p>{{ t('redeem.splitExplanation') }}</p>
+                
+                <div class="split-list">
+                    <div v-for="(amount, idx) in formattedSplitDetails" :key="idx" class="split-item">
+                        <span class="split-index">#{{ idx + 1 }}</span>
+                        <span class="split-value">{{ amount }} OSK</span>
+                    </div>
+                </div>
+             </div>
+             
+             <div class="button-group-row">
+                 <button class="action-btn primary-btn large-btn" @click="confirmSplitReinvest">
+                     {{ t('redeem.confirmSplit') }}
+                 </button>
+             </div>
         </div>
       </div>
     </div>
@@ -150,13 +187,15 @@ import {
   formatUnits,
   getMaxUnstakeAmount,
   getEffectiveMaxStakeAmount,
+  getMaxStakeAbsLimit,
   unstakePrincipalOnly,
   unstakeWithBonus,
+  unstakeWithBonusSplit,
   getOskAllowance,
   approveOsk,
   getOskBalance
 } from '../services/contracts';
-import { APP_ENV } from '../services/environment';
+import { APP_ENV, TIME_UNIT_CONFIG } from '../services/environment';
 import { showToast } from '../services/notification';
 import { t } from '@/i18n';
 import { ethers } from 'ethers';
@@ -174,9 +213,11 @@ export default {
   },
   data() {
     return {
-      mode: 'select', // select | reinvest
+      mode: 'select', // select | reinvest | splitConfirm
       maxUnstakeAmount: null, // Initialize as null to prevent premature warning
       maxStakeAmount: '0',
+      maxStakeAbsLimit: '0',
+      splitDetails: [], // Array of BigInts for split amounts
       newAmount: '',
       selectedDuration: null,
       oskAllowance: '0',
@@ -186,6 +227,11 @@ export default {
     };
   },
   computed: {
+    formattedSplitDetails() {
+        if (!this.splitDetails.length) return [];
+        const decimals = getOskDecimals();
+        return this.splitDetails.map(bn => formatUnits(bn, decimals));
+    },
     minReinvestAmount() {
         return this.principal;
     },
@@ -244,17 +290,33 @@ export default {
         return this.formattedMaxStake; // Display the actual max limit, not just balance
     },
     durationOptions() {
-      // Always use Days for display
+      // Use Minutes if configured, otherwise Days
+      if (TIME_UNIT_CONFIG === 'minute') {
+          return [
+            { value: 0, days: this.t('inject.minutes7'), rate: this.t('inject.rate7') },
+            { value: 1, days: this.t('inject.minutes15'), rate: this.t('inject.rate15') },
+            { value: 2, days: this.t('inject.minutes30'), rate: this.t('inject.rate30') },
+            { value: 3, days: this.t('inject.minutes45'), rate: this.t('inject.rate45') },
+            { value: 4, days: this.t('inject.minutes60'), rate: this.t('inject.rate60') }
+          ];
+      }
+
       return [
         { value: 0, days: this.t('inject.days7'), rate: this.t('inject.rate7') },
         { value: 1, days: this.t('inject.days15'), rate: this.t('inject.rate15') },
         { value: 2, days: this.t('inject.days30'), rate: this.t('inject.rate30') },
-        { value: 3, days: this.t('inject.days45'), rate: this.t('inject.rate45') }
+        { value: 3, days: this.t('inject.days45'), rate: this.t('inject.rate45') },
+        { value: 4, days: this.t('inject.days60'), rate: this.t('inject.rate60') }
       ];
     },
     validDurationOptions() {
-        // Must be >= this.stakeIndex
-        return this.durationOptions.filter(opt => opt.value >= this.stakeIndex);
+        // If stakeIndex is 4 (60 days/mins), show ONLY that option.
+        if (this.stakeIndex === 4) {
+             return this.durationOptions.filter(opt => opt.value === 4);
+        }
+
+        // Otherwise, show options >= stakeIndex BUT exclude index 4 (60 days/mins)
+        return this.durationOptions.filter(opt => opt.value >= this.stakeIndex && opt.value !== 4);
     },
     isAmountInvalid() {
         if (!this.newAmount) return false;
@@ -262,10 +324,10 @@ export default {
             const decimals = getOskDecimals();
             const amountBn = ethers.parseUnits(this.newAmount, decimals);
             const minBn = ethers.parseUnits(this.principal, decimals);
-            const maxBn = ethers.parseUnits(this.maxStakeAmount, decimals);
             const balanceBn = ethers.parseUnits(this.oskBalance, decimals);
             
-            return amountBn < minBn || amountBn > maxBn || amountBn > balanceBn;
+            // Allow amount > maxStakeAmount because we support splitting
+            return amountBn < minBn || amountBn > balanceBn;
         } catch (e) {
             return true;
         }
@@ -286,12 +348,41 @@ export default {
         try {
             const decimals = getOskDecimals();
             const amountBn = ethers.parseUnits(this.newAmount, decimals);
-            const maxBn = ethers.parseUnits(this.maxStakeAmount, decimals);
             const balanceBn = ethers.parseUnits(this.oskBalance, decimals);
-            // Check if amount exceeds either wallet balance or max stake limit
-            return amountBn > maxBn || amountBn > balanceBn;
+            // Only check wallet balance for red warning on balance text
+            return amountBn > balanceBn;
         } catch (e) {
             return false;
+        }
+    },
+    splitPlan() {
+        if (!this.newAmount || this.isInputTooLow) return [];
+        try {
+            const decimals = getOskDecimals();
+            const amountBn = ethers.parseUnits(this.newAmount, decimals);
+            
+            // Determine split limit. Prioritize maxStakeAbsLimit if > 0.
+            const absLimitBn = ethers.parseUnits(this.maxStakeAbsLimit || '0', decimals);
+            const limitBn = absLimitBn > 0n ? absLimitBn : ethers.parseUnits(this.maxStakeAmount || '0', decimals);
+            
+            // Only split if we have a valid positive limit and amount exceeds it
+            if (limitBn > 0n && amountBn > limitBn) {
+                 const chunks = [];
+                 let remaining = amountBn;
+                 while (remaining > 0n) {
+                     if (remaining > limitBn) {
+                         chunks.push(limitBn);
+                         remaining -= limitBn;
+                     } else {
+                         chunks.push(remaining);
+                         remaining = 0n;
+                     }
+                 }
+                 return chunks.map(bn => formatUnits(bn, decimals));
+            }
+            return [];
+        } catch (e) {
+            return [];
         }
     },
     reinvestButtonState() {
@@ -313,9 +404,8 @@ export default {
                  return { text: this.t('inject.insufficientBalance'), disabled: true };
             }
 
-            if (amountBn > maxBn) {
-                 return { text: this.t('inject.maxAmountExceeded', { amount: this.formattedMaxStake }), disabled: true };
-            }
+            // If amount > maxStakeAmount, we allow it but it will be split
+            // So we don't disable the button here unless there are other issues
         } catch (e) {
             // Fallback
         }
@@ -365,6 +455,7 @@ export default {
     async fetchLimits() {
         this.maxUnstakeAmount = await getMaxUnstakeAmount(true);
         this.maxStakeAmount = await getEffectiveMaxStakeAmount(true);
+        this.maxStakeAbsLimit = await getMaxStakeAbsLimit(true);
     },
     async fetchUserData() {
         this.oskBalance = await getOskBalance();
@@ -445,12 +536,55 @@ export default {
             }
             this.isApproving = false;
         } else if (state.action === 'stake') {
+             // Check if splitting is required
+             try {
+                const decimals = getOskDecimals();
+                const amountBn = ethers.parseUnits(this.newAmount, decimals);
+                
+                // Use logic consistent with splitPlan
+                const absLimitBn = ethers.parseUnits(this.maxStakeAbsLimit || '0', decimals);
+                const limitBn = absLimitBn > 0n ? absLimitBn : ethers.parseUnits(this.maxStakeAmount || '0', decimals);
+
+                if (limitBn > 0n && amountBn > limitBn) {
+                    // Calculate split
+                    const chunks = [];
+                    let remaining = amountBn;
+                    while (remaining > 0n) {
+                        if (remaining > limitBn) {
+                            chunks.push(limitBn);
+                            remaining -= limitBn;
+                        } else {
+                            chunks.push(remaining);
+                            remaining = 0n;
+                        }
+                    }
+                    this.splitDetails = chunks;
+                    this.mode = 'splitConfirm';
+                    return;
+                }
+             } catch (e) {
+                 console.error("Split check error", e);
+             }
+
              const success = await unstakeWithBonus(this.stakeId, this.newAmount, this.selectedDuration);
              if (success) {
                  this.$emit('success');
                  this.close();
              }
         }
+    },
+    async confirmSplitReinvest() {
+         console.log("[RedeemModal Debug] Confirming split reinvest with details:", {
+             stakeId: this.stakeId,
+             newAmount: this.newAmount,
+             splitDetails: this.splitDetails.map(bn => bn.toString()),
+             selectedDuration: this.selectedDuration
+         });
+         const success = await unstakeWithBonusSplit(this.stakeId, this.newAmount, this.splitDetails, this.selectedDuration);
+         if (success) {
+             this.$emit('success');
+             this.close();
+         }
     },
     close() {
       this.$emit('close');
@@ -460,6 +594,23 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.split-hint {
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px dashed var(--primary-gold);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    color: var(--primary-gold);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    i {
+        font-size: 1.1rem;
+    }
+}
+
 .confirm-header-top {
     width: 100%;
     display: flex;
@@ -958,6 +1109,37 @@ export default {
         
         &:hover {
             color: #fff;
+        }
+    }
+}
+
+.split-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 15px 0;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    
+    .split-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        
+        &:last-child {
+            border-bottom: none;
+        }
+        
+        .split-index {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        
+        .split-value {
+            color: var(--primary-gold);
+            font-family: var(--font-mono);
+            font-weight: 600;
         }
     }
 }
