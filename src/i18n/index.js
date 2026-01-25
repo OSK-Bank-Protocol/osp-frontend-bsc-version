@@ -35,6 +35,8 @@ const languagePacks = {
     'hero.shareFriend': '分享好友',
     'hero.achievementReward': '成就奖励',
     'hero.totalInvestment': '您的总质押',
+    'hero.oskBalance': 'OSK余额',
+    'hero.ospBalance': 'OSP余额',
     
     // Connect Wallet Modal
     'wallet.connectTitle': '连接钱包',
@@ -274,6 +276,8 @@ const languagePacks = {
     'hero.shareFriend': '分享好友',
     'hero.achievementReward': '成就獎勵',
     'hero.totalInvestment': '您的總質押',
+    'hero.oskBalance': 'OSK餘額',
+    'hero.ospBalance': 'OSP餘額',
     
     // Connect Wallet Modal
     'wallet.connectTitle': '連接錢包',
@@ -509,6 +513,8 @@ const languagePacks = {
     'hero.shareFriend': 'Share Friend',
     'hero.achievementReward': 'Achievement Reward',
     'hero.totalInvestment': 'Your Total Stake',
+    'hero.oskBalance': 'OSK Balance',
+    'hero.ospBalance': 'OSP Balance',
     
     // Connect Wallet Modal
     'wallet.connectTitle': 'Connect Wallet',
@@ -745,6 +751,8 @@ const languagePacks = {
     'hero.shareFriend': '友人を共有',
     'hero.achievementReward': '実績報酬',
     'hero.totalInvestment': 'あなたの総ステーク',
+    'hero.oskBalance': 'OSK残高',
+    'hero.ospBalance': 'OSP残高',
     
     // Connect Wallet Modal
     'wallet.connectTitle': 'ウォレット接続',
@@ -975,6 +983,8 @@ const languagePacks = {
     'hero.shareFriend': '친구 공유',
     'hero.achievementReward': '성취 보상',
     'hero.totalInvestment': '총 스테이킹',
+    'hero.oskBalance': 'OSK 잔액',
+    'hero.ospBalance': 'OSP 잔액',
     
     // Connect Wallet Modal
     'wallet.connectTitle': '지갑 연결',

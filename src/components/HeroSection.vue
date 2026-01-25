@@ -67,11 +67,11 @@
                                     </span>
                                 </div> -->
                                 <div class="info-row">
-                                    <span class="label">OSK:</span>
+                                    <span class="label">{{ t('hero.oskBalance') }}:</span>
                                     <span class="value"><AnimatedNumber :value="oskBalance" :decimals="2" /></span>
                                 </div>
                                 <div class="info-row">
-                                    <span class="label">OSP:</span>
+                                    <span class="label">{{ t('hero.ospBalance') }}:</span>
                                     <span class="value"><AnimatedNumber :value="ospBalance" :decimals="2" /></span>
                                 </div>
                             </div>
