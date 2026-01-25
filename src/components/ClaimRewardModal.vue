@@ -62,7 +62,7 @@
                 </div>
 
                 <!-- Node Rewards (Node Point) -->
-                <div v-if="showNodePointSection" class="reward-card">
+                <!-- <div v-if="showNodePointSection" class="reward-card">
                     <div class="card-header">
                         <span class="card-title">{{ t('claim.nodeRewardTitle') }}</span>
                         <span class="card-value">{{ truncatedNodeRewards }} <small>{{ t('common.osp') }}</small></span>
@@ -73,10 +73,10 @@
                     >
                         {{ isClaimingNodeReward ? t('claim.claiming') : t('claim.claim') }}
                     </button>
-                </div>
+                </div> -->
 
                 <!-- Dividend Rewards (Dividend Point) -->
-                <div v-if="showDividendPointSection" class="reward-card">
+                <!-- <div v-if="showDividendPointSection" class="reward-card">
                     <div class="card-header">
                         <span class="card-title">{{ t('claim.dividendRewardTitle') }}</span>
                         <span class="card-value">{{ truncatedDividendRewards }} <small>{{ t('common.osk') }}</small></span>
@@ -88,7 +88,7 @@
                     >
                         {{ isClaimingDividendReward ? t('claim.claiming') : t('claim.claim') }}
                     </button>
-                </div>
+                </div> -->
             </div>
         </div>
 
@@ -201,6 +201,7 @@ const fetchRewardData = async () => {
 
     isLoading.value = true;
     try {
+        /*
         const [kpi, s5Rewards, s6Rewards, s7Rewards, nodeRewards, preacherStatus, dividendRewards] = await Promise.all([
             getTeamKpiBigNumber(),
             getS5PendingRewards(),
@@ -209,6 +210,18 @@ const fetchRewardData = async () => {
             getNodePointRewards(),
             checkIsPreacher(),
             getDividendPointRewards()
+        ]);
+        */
+       
+        // Modified to exclude node and dividend rewards
+        const [kpi, s5Rewards, s6Rewards, s7Rewards, preacherStatus] = await Promise.all([
+            getTeamKpiBigNumber(),
+            getS5PendingRewards(),
+            getS6PendingRewards(),
+            getS7PendingRewards(),
+            // getNodePointRewards(),
+            checkIsPreacher(),
+            // getDividendPointRewards()
         ]);
 
         const kpiMetS7 = kpi >= S7_THRESHOLD;
@@ -222,14 +235,14 @@ const fetchRewardData = async () => {
         s5_rewards.value = s5Rewards;
         s6_rewards.value = s6Rewards;
         s7_rewards.value = s7Rewards;
-        node_rewards.value = nodeRewards;
-        dividend_rewards.value = dividendRewards;
+        // node_rewards.value = nodeRewards;
+        // dividend_rewards.value = dividendRewards;
         isPreacher.value = preacherStatus;
 
         // Use string comparison or regex for show flags to avoid float precision issues
         // Check if string has any non-zero digit
-        showNodePointSection.value = /[1-9]/.test(nodeRewards);
-        showDividendPointSection.value = /[1-9]/.test(dividendRewards);
+        // showNodePointSection.value = /[1-9]/.test(nodeRewards);
+        // showDividendPointSection.value = /[1-9]/.test(dividendRewards);
 
     } catch (error) {
         console.error("Failed to fetch reward data:", error);
@@ -284,8 +297,10 @@ const claim = async (level) => {
 
 const claimNodeReward = async () => {
     // Temporary disable Node Reward
+    /*
     showToast(t('toast.notYetOpen'));
     return;
+    */
 
     /* Original logic commented out for temporary disable
     if (!isPreacher.value) {
@@ -313,6 +328,7 @@ const claimNodeReward = async () => {
 };
 
 const claimDividendReward = async () => {
+    /*
     if (!isPreacher.value) {
         showToast(t('toast.stake200Tokens'));
         return;
@@ -331,6 +347,7 @@ const claimDividendReward = async () => {
     } finally {
         isClaimingDividendReward.value = false;
     }
+    */
 };
 
 watch(() => walletState.isAuthenticated, (isAuth) => {

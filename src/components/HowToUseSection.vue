@@ -327,10 +327,8 @@ const nextPage = () => {
 };
 
 const getDurationLabel = (index) => {
-    const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
-    const keys = isDev 
-        ? ['inject.minutes7', 'inject.minutes15', 'inject.minutes30', 'inject.minutes45']
-        : ['inject.days7', 'inject.days15', 'inject.days30', 'inject.days45'];
+    // Always use Days keys
+    const keys = ['inject.days7', 'inject.days15', 'inject.days30', 'inject.days45'];
     
     // Check if translation exists, otherwise fall back to hardcoded string to avoid empty display
     const key = keys[index] || keys[0];
@@ -338,13 +336,8 @@ const getDurationLabel = (index) => {
     
     // If translation returns the key itself (meaning missing translation), return a fallback
     if (translation === key) {
-        if (isDev) {
-            const mins = [7, 15, 30, 45];
-            return `${mins[index] || 7} Mins`;
-        } else {
-            const days = [7, 15, 30, 45];
-            return `${days[index] || 7} Days`;
-        }
+        const days = [7, 15, 30, 45];
+        return `${days[index] || 7} Days`;
     }
     
     return translation;
