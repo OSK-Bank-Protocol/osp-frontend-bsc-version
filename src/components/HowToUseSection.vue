@@ -194,8 +194,10 @@ const fetchStakingData = async () => {
         const decimals = getOskDecimals();
         const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
         const stakeDurations = isDev 
-            ? [420, 900, 1800, 2700] // 7 mins, 15 mins, 30 mins, 45 mins (in seconds)
-            : [604800, 1296000, 2592000, 3888000]; // 7 days, 15 days, 30 days, 45 days
+            ? [604800, 1296000, 2592000, 3888000, 5184000] // Dev uses Days: 7, 15, 30, 45, 60 days
+            : [604800, 1296000, 2592000, 3888000, 5184000]; // Prod: 7, 15, 30, 45, 60 days
+
+        console.log(`[HowToUse Debug] isDev=${isDev}, Durations=${stakeDurations}`);
 
         let liveRewards = [];
         if (status === 0 && pageRecords.length > 0) {
@@ -221,8 +223,11 @@ const fetchStakingData = async () => {
             const totalValueBn = amountBn + interestBn;
 
             const stakeTimeInSeconds = Number(record.stakeTime);
-            const stakeDurationInSeconds = stakeDurations[Number(record.stakeIndex)];
+            const stakeIndexVal = Number(record.stakeIndex);
+            const stakeDurationInSeconds = stakeDurations[stakeIndexVal] || 0;
             const expiryTimestamp = (stakeTimeInSeconds + stakeDurationInSeconds) * 1000;
+
+            console.log(`[HowToUse Item] Index=${stakeIndexVal}, Time=${stakeTimeInSeconds}, Duration=${stakeDurationInSeconds}, Expiry=${expiryTimestamp}, Now=${Date.now()}`);
 
             let displayStatus = 'waiting';
             if (record.status === true) {
@@ -328,7 +333,7 @@ const nextPage = () => {
 
 const getDurationLabel = (index) => {
     // Always use Days keys
-    const keys = ['inject.days7', 'inject.days15', 'inject.days30', 'inject.days45'];
+    const keys = ['inject.days7', 'inject.days15', 'inject.days30', 'inject.days45', 'inject.days60'];
     
     // Check if translation exists, otherwise fall back to hardcoded string to avoid empty display
     const key = keys[index] || keys[0];
@@ -336,7 +341,7 @@ const getDurationLabel = (index) => {
     
     // If translation returns the key itself (meaning missing translation), return a fallback
     if (translation === key) {
-        const days = [7, 15, 30, 45];
+        const days = [7, 15, 30, 45, 60];
         return `${days[index] || 7} Days`;
     }
     

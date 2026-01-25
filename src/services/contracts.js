@@ -523,8 +523,11 @@ export const getUserStakingData = async () => {
     
     const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
     const stakeDurations = isDev 
-      ? [420, 900, 1800, 2700] 
-      : [604800, 1296000, 2592000, 3888000];
+      ? [604800, 1296000, 2592000, 3888000, 5184000] // Dev env now also uses Days: 7, 15, 30, 45, 60 days
+      : [604800, 1296000, 2592000, 3888000, 5184000]; // Prod: 7, 15, 30, 45, 60 days
+
+    console.log(`[Staking Debug] Current ENV: ${APP_ENV}, isDev: ${isDev}`);
+    console.log(`[Staking Debug] Stake Durations:`, stakeDurations);
 
     const formattedData = validResults.map((item) => {
       // Ethers returns Result objects or arrays for structs
@@ -564,6 +567,17 @@ export const getUserStakingData = async () => {
       } else if (expiryTimestamp <= Date.now()) {
         displayStatus = 'redeemable';
       }
+
+      console.log(`[Staking Debug] Item ${originalIndex}:`, {
+          stakeIndexVal,
+          stakeTime: new Date(stakeTimeInSeconds * 1000).toLocaleString(),
+          durationSeconds: stakeDurationInSeconds,
+          expiryTime: new Date(expiryTimestamp).toLocaleString(),
+          now: new Date().toLocaleString(),
+          isExpired: expiryTimestamp <= Date.now(),
+          status: status,
+          displayStatus
+      });
 
       const decimals = getOskDecimals();
 
