@@ -147,7 +147,7 @@ import {
   rewardOfSlot,
   formatUnits
 } from '../services/contracts';
-import { APP_ENV } from '../services/environment';
+import { APP_ENV, TIME_UNIT_CONFIG } from '../services/environment';
 import CountdownTimer from './CountdownTimer.vue';
 import RedeemModal from './RedeemModal.vue';
 import { t } from '@/i18n';
@@ -193,9 +193,17 @@ const fetchStakingData = async () => {
         totalItems.value = Number(total);
         const decimals = getOskDecimals();
         const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
-        const stakeDurations = isDev 
-            ? [420, 900, 1800, 2700] // 7 mins, 15 mins, 30 mins, 45 mins (in seconds)
-            : [604800, 1296000, 2592000, 3888000]; // 7 days, 15 days, 30 days, 45 days
+        
+        let stakeDurations;
+        if (TIME_UNIT_CONFIG === 'minute') {
+             // Minute mode: 7, 15, 30, 45, 60 minutes
+             stakeDurations = [420, 900, 1800, 2700, 3600];
+        } else {
+             // Day mode: 7, 15, 30, 45, 60 days
+             stakeDurations = [604800, 1296000, 2592000, 3888000, 5184000];
+        }
+
+        console.log(`[HowToUse Debug] isDev=${isDev}, TimeUnit=${TIME_UNIT_CONFIG}, Durations=${stakeDurations}`);
 
         let liveRewards = [];
         if (status === 0 && pageRecords.length > 0) {
@@ -221,8 +229,11 @@ const fetchStakingData = async () => {
             const totalValueBn = amountBn + interestBn;
 
             const stakeTimeInSeconds = Number(record.stakeTime);
-            const stakeDurationInSeconds = stakeDurations[Number(record.stakeIndex)];
+            const stakeIndexVal = Number(record.stakeIndex);
+            const stakeDurationInSeconds = stakeDurations[stakeIndexVal] || 0;
             const expiryTimestamp = (stakeTimeInSeconds + stakeDurationInSeconds) * 1000;
+
+            console.log(`[HowToUse Item] Index=${stakeIndexVal}, Time=${stakeTimeInSeconds}, Duration=${stakeDurationInSeconds}, Expiry=${expiryTimestamp}, Now=${Date.now()}`);
 
             let displayStatus = 'waiting';
             if (record.status === true) {
@@ -327,10 +338,10 @@ const nextPage = () => {
 };
 
 const getDurationLabel = (index) => {
-    const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
-    const keys = isDev 
-        ? ['inject.minutes7', 'inject.minutes15', 'inject.minutes30', 'inject.minutes45']
-        : ['inject.days7', 'inject.days15', 'inject.days30', 'inject.days45'];
+    // Select keys based on configuration
+    const keys = TIME_UNIT_CONFIG === 'minute'
+        ? ['inject.minutes7', 'inject.minutes15', 'inject.minutes30', 'inject.minutes45', 'inject.minutes60']
+        : ['inject.days7', 'inject.days15', 'inject.days30', 'inject.days45', 'inject.days60'];
     
     // Check if translation exists, otherwise fall back to hardcoded string to avoid empty display
     const key = keys[index] || keys[0];
@@ -338,13 +349,9 @@ const getDurationLabel = (index) => {
     
     // If translation returns the key itself (meaning missing translation), return a fallback
     if (translation === key) {
-        if (isDev) {
-            const mins = [7, 15, 30, 45];
-            return `${mins[index] || 7} Mins`;
-        } else {
-            const days = [7, 15, 30, 45];
-            return `${days[index] || 7} Days`;
-        }
+        const values = [7, 15, 30, 45, 60];
+        const unit = TIME_UNIT_CONFIG === 'minute' ? 'Minutes' : 'Days';
+        return `${values[index] || 7} ${unit}`;
     }
     
     return translation;

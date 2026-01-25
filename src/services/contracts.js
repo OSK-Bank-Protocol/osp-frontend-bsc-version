@@ -1,5 +1,5 @@
 import { walletState } from './wallet';
-import { APP_ENV, ENABLE_SINGLE_PURCHASE_LIMIT, SINGLE_PURCHASE_LIMIT } from './environment';
+import { APP_ENV, ENABLE_SINGLE_PURCHASE_LIMIT, SINGLE_PURCHASE_LIMIT, TIME_UNIT_CONFIG } from './environment';
 import { toRaw } from 'vue';
 import { showToast } from '../services/notification';
 import { t } from '../i18n';
@@ -101,18 +101,18 @@ const stakingAbi = APP_ENV === 'PROD' ? stakingAbiMain : stakingAbiTest;
 const contractAddresses = {
   referral: {
     production: '0x0000000000000000000000000000000000000000', 
-    development: '0xFD3D6A574f5246b1C1c38ddC2b037b41a077cacB',
+    development: '0x0D2B539D053370fA0e87fE16B159a1275523Cfad',
   },
   staking: {
     production: '0x0000000000000000000000000000000000000000', 
-    development: '0xB614F203E457f72f8561167fC4d9fe4721403A65',
+    development: '0x08D53d6c0514AE7735F693D9fcF8AD9d49453749',
   },
   osp: {
     production: '0x0000000000000000000000000000000000000000', 
-    development: '0xB4369432BF7356d5cDAE11a2824A855d4Dd88A4F',
+    development: '0xfcc3229a8cbad0f92408282e221DeF1D7a37974a',
   },
   osk: {
-    production: '0xf67421Bcd98607562fC10C65a8ca315d5fAd3dCF', 
+    production: '0xD98492fdc4b1853051dc251638ddA05FD2Ea0788', 
     development: '0x598ebe75B49c9bd79230673d38FF7F581DCD1AeE',
   },
   router: {
@@ -121,23 +121,24 @@ const contractAddresses = {
   },
   s5pool: {
     production: '0x0000000000000000000000000000000000000000', 
-    development: '0x10b0a9f23869376f780f03baD73E5ECd49eDfB60',
+    development: '0x09c046ba1957D3b9276E57892b599704EAEd2c7A',
   },
   s6pool: {
     production: '0x0000000000000000000000000000000000000000', 
-    development: '0x94105df48A5b733C074cd33a0B61034374348453',
+    development: '0xF02622F050b60a3Ff8b54Bc89e3E9F5453A79835',
   },
   s7pool: {
     production: '0x0000000000000000000000000000000000000000', 
-    development: '0x8b74B65763f3fd7Aa8B1B6a533BD0Fb7b1964484',
+    development: '0x5D765523Ab881DC413151e8e333F015060DB8B88',
   },
+  // s8pool no need in frontend
   lp: {
     production: '0x0000000000000000000000000000000000000000',
-    development: '0x8FbC1FF249D477034ac3E0269F60655B5De688b8',
+    development: '0xA8C18E845F4034eD68a9eabe604a2F4cdde6410A',
   },
   nodePool: {
     production: '0x0000000000000000000000000000000000000000',
-    development: '0x6A39316238718d672a2a1699F75c18F64640e44D',
+    development: '0x64230522C489CA93C959d7473602cE7a88eFd8c3',
   },
   nodeDividendPool: {
     production: '0x0000000000000000000000000000000000000000',
@@ -521,9 +522,18 @@ export const getUserStakingData = async () => {
     const validResults = results.filter(r => r !== null);
     
     const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
-    const stakeDurations = isDev 
-      ? [420, 900, 1800, 2700] 
-      : [604800, 1296000, 2592000, 3888000];
+    let stakeDurations;
+    
+    if (TIME_UNIT_CONFIG === 'minute') {
+         // Minute mode: 7, 15, 30, 45, 60 minutes
+         stakeDurations = [420, 900, 1800, 2700, 3600];
+    } else {
+         // Day mode: 7, 15, 30, 45, 60 days
+         stakeDurations = [604800, 1296000, 2592000, 3888000, 5184000];
+    }
+
+    console.log(`[Staking Debug] Current ENV: ${APP_ENV}, isDev: ${isDev}, TimeUnit: ${TIME_UNIT_CONFIG}`);
+    console.log(`[Staking Debug] Stake Durations:`, stakeDurations);
 
     const formattedData = validResults.map((item) => {
       // Ethers returns Result objects or arrays for structs
@@ -563,6 +573,17 @@ export const getUserStakingData = async () => {
       } else if (expiryTimestamp <= Date.now()) {
         displayStatus = 'redeemable';
       }
+
+      console.log(`[Staking Debug] Item ${originalIndex}:`, {
+          stakeIndexVal,
+          stakeTime: new Date(stakeTimeInSeconds * 1000).toLocaleString(),
+          durationSeconds: stakeDurationInSeconds,
+          expiryTime: new Date(expiryTimestamp).toLocaleString(),
+          now: new Date().toLocaleString(),
+          isExpired: expiryTimestamp <= Date.now(),
+          status: status,
+          displayStatus
+      });
 
       const decimals = getOskDecimals();
 
@@ -619,6 +640,18 @@ export const getOskBalance = async () => {
       try {
         const balance = await oskContract.balanceOf(walletState.address);
         return formatUnits(balance, getOskDecimals());
+      } catch (error) {
+        return "0";
+      }
+  }, SHORT_CACHE_TTL);
+};
+
+export const getOspBalance = async () => {
+  if (!ospContract || !walletState.address) return "0";
+  return cachedCall(`ospBalance_${walletState.address}`, async () => {
+      try {
+        const balance = await ospContract.balanceOf(walletState.address);
+        return formatUnits(balance, 18);
       } catch (error) {
         return "0";
       }
@@ -851,6 +884,18 @@ export const getMaxUnstakeAmount = async (forceRefresh = false) => {
   }, CACHE_TTL, forceRefresh);
 };
 
+export const getMaxStakeAbsLimit = async (forceRefresh = false) => {
+  if (!stakingContract) return "0";
+  return cachedCall('maxStakeAbsLimit', async () => {
+    try {
+        const limit = await stakingContract.maxStakeAbsLimit();
+        return formatUnits(limit, getOskDecimals());
+    } catch (error) {
+        return "0";
+    }
+  }, CACHE_TTL, forceRefresh);
+};
+
 export const unstakePrincipalOnly = async (index) => {
   if (!stakingContract) return false;
   try {
@@ -866,6 +911,48 @@ export const unstakePrincipalOnly = async (index) => {
     showToast(errorMsg);
     return false;
   }
+};
+
+export const unstakeWithBonusSplit = async (index, amountDisplay, amountsArrayWei, newStakeIndex) => {
+    if (!stakingContract) return false;
+    try {
+        const decimals = getOskDecimals();
+        const amountStr = parseUnits(amountDisplay, decimals);
+        const amountInWei = BigInt(amountStr);
+        
+        // Slippage calc
+        const expectedOSP = await getExpectedOSPAmount(amountInWei / 2n);
+        let amountOutMin = 0n;
+        if (expectedOSP > 0n) {
+             amountOutMin = (expectedOSP * 90n) / 100n; // 10% slippage
+        }
+        
+        console.log(`[Reinvest Split Debug] unstakeWithBonusSplit params:`, {
+            index: index,
+            amountsArray: amountsArrayWei.map(a => a.toString()),
+            totalAmount: amountInWei.toString(),
+            amountOutMin: amountOutMin.toString(),
+            newStakeIndex: newStakeIndex
+        });
+
+        const tx = await stakingContract.unstakeWithBonusSplit(
+            index,
+            amountsArrayWei,
+            amountOutMin,
+            newStakeIndex
+        );
+        
+        showToast(t('toast.txSent'));
+        await tx.wait();
+        showToast(t('toast.reinvestSuccess'));
+        return true;
+    } catch (error) {
+        console.error("Unstake With Bonus Split error:", error);
+        let errorMsg = t('toast.unstakeFailed');
+        if (error && error.reason) errorMsg = error.reason;
+        showToast(errorMsg);
+        return false;
+    }
 };
 
 export const unstakeWithBonus = async (index, newAmount, newStakeIndex) => {

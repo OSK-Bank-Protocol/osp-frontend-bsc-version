@@ -35,6 +35,8 @@ const languagePacks = {
     'hero.shareFriend': '分享好友',
     'hero.achievementReward': '成就奖励',
     'hero.totalInvestment': '您的总质押',
+    'hero.oskBalance': 'OSK余额',
+    'hero.ospBalance': 'OSP余额',
     
     // Connect Wallet Modal
     'wallet.connectTitle': '连接钱包',
@@ -72,10 +74,13 @@ const languagePacks = {
     'inject.rate30': '复利1.0%',
     'inject.days45': '45天',
     'inject.rate45': '复利1.2%',
+    'inject.days60': '60天',
+    'inject.rate60': '复利1.4%',
     'inject.minutes7': '7分',
     'inject.minutes15': '15分',
     'inject.minutes30': '30分',
     'inject.minutes45': '45分',
+    'inject.minutes60': '60分',
     'inject.cancel': '取消',
     'inject.approving': '授权中...',
     'inject.enterAmount': '请输入数量',
@@ -118,6 +123,9 @@ const languagePacks = {
     'redeem.confirmForfeitLine2': '来获取本金？',
     'redeem.confirmRedeem': '确定赎回本金',
     'redeem.goToReinvest': '去复投',
+    'redeem.splitNotice': '订单拆分为：',
+    'redeem.splitExplanation': '订单金额超过单笔限额，将拆分为多笔订单复投：',
+    'redeem.confirmSplit': '确认复投并赎回',
     
     // Claim Reward Modal
     'claim.title': '成就奖励',
@@ -268,6 +276,8 @@ const languagePacks = {
     'hero.shareFriend': '分享好友',
     'hero.achievementReward': '成就獎勵',
     'hero.totalInvestment': '您的總質押',
+    'hero.oskBalance': 'OSK餘額',
+    'hero.ospBalance': 'OSP餘額',
     
     // Connect Wallet Modal
     'wallet.connectTitle': '連接錢包',
@@ -305,10 +315,13 @@ const languagePacks = {
     'inject.rate30': '複利1.0%',
     'inject.days45': '45天',
     'inject.rate45': '複利1.2%',
+    'inject.days60': '60天',
+    'inject.rate60': '複利1.4%',
     'inject.minutes7': '7分',
     'inject.minutes15': '15分',
     'inject.minutes30': '30分',
     'inject.minutes45': '45分',
+    'inject.minutes60': '60分',
     'inject.cancel': '取消',
     'inject.approving': '授權中...',
     'inject.enterAmount': '請輸入數量',
@@ -347,6 +360,9 @@ const languagePacks = {
     'redeem.confirmForfeitLine2': '來獲取本金？',
     'redeem.confirmRedeem': '確定贖回本金',
     'redeem.goToReinvest': '去復投',
+    'redeem.splitNotice': '訂單拆分為：',
+    'redeem.splitExplanation': '訂單金額超過單筆限額，將拆分為多筆訂單復投：',
+    'redeem.confirmSplit': '確認復投並贖回',
     
     // Claim Reward Modal
     'claim.title': '領取您的成就獎勵',
@@ -497,6 +513,8 @@ const languagePacks = {
     'hero.shareFriend': 'Share Friend',
     'hero.achievementReward': 'Achievement Reward',
     'hero.totalInvestment': 'Your Total Stake',
+    'hero.oskBalance': 'OSK Balance',
+    'hero.ospBalance': 'OSP Balance',
     
     // Connect Wallet Modal
     'wallet.connectTitle': 'Connect Wallet',
@@ -533,10 +551,13 @@ const languagePacks = {
     'inject.rate30': 'Compound 1.0%',
     'inject.days45': '45 Days',
     'inject.rate45': 'Compound 1.2%',
+    'inject.days60': '60 Days',
+    'inject.rate60': 'Compound 1.4%',
     'inject.minutes7': '7 Mins',
     'inject.minutes15': '15 Mins',
     'inject.minutes30': '30 Mins',
     'inject.minutes45': '45 Mins',
+    'inject.minutes60': '60 Mins',
     'inject.cancel': 'Cancel',
     'inject.approving': 'Approving...',
     'inject.enterAmount': 'Please enter amount',
@@ -579,6 +600,9 @@ const languagePacks = {
     'redeem.confirmForfeitLine2': 'to get principal?',
     'redeem.confirmRedeem': 'Confirm Redeem',
     'redeem.goToReinvest': 'Go to Reinvest',
+    'redeem.splitNotice': 'Split into:',
+    'redeem.splitExplanation': 'Amount exceeds single limit. Will be split into multiple orders:',
+    'redeem.confirmSplit': 'Confirm Reinvest & Redeem',
     
     // Claim Reward Modal
     'claim.title': 'Claim Your Achievement Rewards',
@@ -727,6 +751,8 @@ const languagePacks = {
     'hero.shareFriend': '友人を共有',
     'hero.achievementReward': '実績報酬',
     'hero.totalInvestment': 'あなたの総ステーク',
+    'hero.oskBalance': 'OSK残高',
+    'hero.ospBalance': 'OSP残高',
     
     // Connect Wallet Modal
     'wallet.connectTitle': 'ウォレット接続',
@@ -761,10 +787,13 @@ const languagePacks = {
     'inject.rate15': '複利0.6%',
     'inject.days30': '30日',
     'inject.rate30': '複利1.2%',
+    'inject.days60': '60日',
+    'inject.rate60': '複利1.4%',
     'inject.minutes7': '7分',
     'inject.minutes15': '15分',
     'inject.minutes30': '30分',
     'inject.minutes45': '45分',
+    'inject.minutes60': '60分',
     'inject.cancel': 'キャンセル',
     'inject.approving': '承認中...',
     'inject.enterAmount': '金額を入力してください',
@@ -803,6 +832,9 @@ const languagePacks = {
     'redeem.confirmForfeitLine2': '元本を取得しますか？',
     'redeem.confirmRedeem': '償還を確認',
     'redeem.goToReinvest': '再投資へ',
+    'redeem.splitNotice': '分割:',
+    'redeem.splitExplanation': '金額が単一の制限を超えています。複数の注文に分割されます:',
+    'redeem.confirmSplit': '再投資して償還を確認',
     
     // Claim Reward Modal
     'claim.title': '実績報酬を受け取る',
@@ -951,6 +983,8 @@ const languagePacks = {
     'hero.shareFriend': '친구 공유',
     'hero.achievementReward': '성취 보상',
     'hero.totalInvestment': '총 스테이킹',
+    'hero.oskBalance': 'OSK 잔액',
+    'hero.ospBalance': 'OSP 잔액',
     
     // Connect Wallet Modal
     'wallet.connectTitle': '지갑 연결',
@@ -985,10 +1019,13 @@ const languagePacks = {
     'inject.rate15': '복리 0.6%',
     'inject.days30': '30일',
     'inject.rate30': '복리 1.2%',
+    'inject.days60': '60일',
+    'inject.rate60': '복리 1.4%',
     'inject.minutes7': '7분',
     'inject.minutes15': '15분',
     'inject.minutes30': '30분',
     'inject.minutes45': '45분',
+    'inject.minutes60': '60분',
     'inject.cancel': '취소',
     'inject.approving': '승인 중...',
     'inject.enterAmount': '금액을 입력하세요',
@@ -1027,6 +1064,9 @@ const languagePacks = {
     'redeem.confirmForfeitLine2': '원금을 받으시겠습니까?',
     'redeem.confirmRedeem': '상환 확인',
     'redeem.goToReinvest': '재투자로 이동',
+    'redeem.splitNotice': '다음으로 분할:',
+    'redeem.splitExplanation': '금액이 단일 한도를 초과합니다. 여러 주문으로 분할됩니다:',
+    'redeem.confirmSplit': '재투자 및 상환 확인',
 
     // Claim Reward Modal
     'claim.title': '성취 보상 받기',

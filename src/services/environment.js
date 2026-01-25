@@ -55,11 +55,19 @@ export const SINGLE_PURCHASE_LIMIT = 0.5;
 /**
  * Enable staking queue frequency control
  */
-export const ENABLE_STAKING_QUEUE = true;
+export const ENABLE_STAKING_QUEUE = false;
 
 /**
  * Disable console logs in production
  * Set to true to disable console.log/debug/info in production environment
  */
 export const DISABLE_CONSOLE_IN_PROD = true;
+
+/**
+ * Time Unit Configuration
+ * Determines whether to display staking duration in minutes or days.
+ * Useful for test/dev environments where contracts might have shorter durations.
+ * Set to 'minute' for minute-based display, 'day' for day-based display.
+ */
+export const TIME_UNIT_CONFIG = (APP_ENV === 'test' || APP_ENV === 'dev') ? 'day' : 'day';
 
