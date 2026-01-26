@@ -69,5 +69,5 @@ export const DISABLE_CONSOLE_IN_PROD = true;
  * Useful for test/dev environments where contracts might have shorter durations.
  * Set to 'minute' for minute-based display, 'day' for day-based display.
  */
-export const TIME_UNIT_CONFIG = (APP_ENV === 'test' || APP_ENV === 'dev') ? 'day' : 'day';
+export const TIME_UNIT_CONFIG = (APP_ENV === 'test' || APP_ENV === 'dev') ? 'minute' : 'day';
 
