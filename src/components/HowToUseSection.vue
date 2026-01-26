@@ -147,10 +147,10 @@ import {
   rewardOfSlot,
   formatUnits
 } from '../services/contracts';
-import { APP_ENV, TIME_UNIT_CONFIG } from '../services/environment';
+import { APP_ENV, STAKE_DURATIONS } from '../services/environment';
 import CountdownTimer from './CountdownTimer.vue';
 import RedeemModal from './RedeemModal.vue';
-import { t } from '@/i18n';
+import { t, i18nState } from '@/i18n';
 import { ethers } from 'ethers';
 
 const stakingItems = ref([]);
@@ -194,16 +194,9 @@ const fetchStakingData = async () => {
         const decimals = getOskDecimals();
         const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
         
-        let stakeDurations;
-        if (TIME_UNIT_CONFIG === 'minute') {
-             // Minute mode: 7, 15, 30, 45, 60 minutes
-             stakeDurations = [420, 900, 1800, 2700, 3600];
-        } else {
-             // Day mode: 7, 15, 30, 45, 60 days
-             stakeDurations = [604800, 1296000, 2592000, 3888000, 5184000];
-        }
+        const stakeDurations = STAKE_DURATIONS;
 
-        console.log(`[HowToUse Debug] isDev=${isDev}, TimeUnit=${TIME_UNIT_CONFIG}, Durations=${stakeDurations}`);
+        console.log(`[HowToUse Debug] isDev=${isDev}, Durations=${stakeDurations}`);
 
         let liveRewards = [];
         if (status === 0 && pageRecords.length > 0) {
@@ -338,23 +331,42 @@ const nextPage = () => {
 };
 
 const getDurationLabel = (index) => {
-    // Select keys based on configuration
-    const keys = TIME_UNIT_CONFIG === 'minute'
-        ? ['inject.minutes7', 'inject.minutes15', 'inject.minutes30', 'inject.minutes45', 'inject.minutes60']
-        : ['inject.days7', 'inject.days15', 'inject.days30', 'inject.days45', 'inject.days60'];
-    
-    // Check if translation exists, otherwise fall back to hardcoded string to avoid empty display
-    const key = keys[index] || keys[0];
-    const translation = t(key);
-    
-    // If translation returns the key itself (meaning missing translation), return a fallback
-    if (translation === key) {
-        const values = [7, 15, 30, 45, 60];
-        const unit = TIME_UNIT_CONFIG === 'minute' ? 'Minutes' : 'Days';
-        return `${values[index] || 7} ${unit}`;
+    const durationSeconds = STAKE_DURATIONS[index] || 0;
+    if (durationSeconds === 0) return '';
+
+    const standardKeys = {
+        // Minutes
+        420: 'inject.minutes7',
+        900: 'inject.minutes15',
+        1800: 'inject.minutes30',
+        2700: 'inject.minutes45',
+        3600: 'inject.minutes60',
+        // Days
+        604800: 'inject.days7',
+        1296000: 'inject.days15',
+        2592000: 'inject.days30',
+        3888000: 'inject.days45',
+        5184000: 'inject.days60'
+    };
+
+    if (standardKeys[durationSeconds]) {
+        return t(standardKeys[durationSeconds]);
     }
     
-    return translation;
+    // Dynamic formatting for custom values
+    const isChinese = ['zh-cn', 'zh-tw'].includes(i18nState.currentLanguage);
+    
+    if (durationSeconds % 86400 === 0) {
+        const val = durationSeconds / 86400;
+        if (isChinese) return `${val}天`;
+        return `${val} ${val === 1 ? 'Day' : 'Days'}`;
+    }
+    if (durationSeconds % 60 === 0) {
+         const val = durationSeconds / 60;
+         if (isChinese) return `${val}分`;
+         return `${val} ${val === 1 ? 'Min' : 'Mins'}`;
+    }
+    return `${durationSeconds}s`;
 };
 </script>
 

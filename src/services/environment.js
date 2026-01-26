@@ -69,5 +69,15 @@ export const DISABLE_CONSOLE_IN_PROD = true;
  * Useful for test/dev environments where contracts might have shorter durations.
  * Set to 'minute' for minute-based display, 'day' for day-based display.
  */
-export const TIME_UNIT_CONFIG = (APP_ENV === 'test' || APP_ENV === 'dev') ? 'minute' : 'day';
+export const TIME_UNIT_CONFIG = (APP_ENV === 'test' || APP_ENV === 'dev') ? 'day' : 'day';
+
+/**
+ * Stake Durations Configuration (in seconds)
+ * Defines the duration for each stake index (0-4).
+ */
+const STAKE_DURATIONS_MINUTE = [420, 900, 1800, 2700, 60]; // 7, 15, 30, 45, 60 minutes
+const STAKE_DURATIONS_DAY = [604800, 1296000, 2592000, 3888000, 5184000]; // 7, 15, 30, 45, 60 days
+
+export const STAKE_DURATIONS = TIME_UNIT_CONFIG === 'minute' ? STAKE_DURATIONS_MINUTE : STAKE_DURATIONS_DAY;
+
 

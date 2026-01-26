@@ -102,12 +102,13 @@ import {
   ENABLE_SINGLE_PURCHASE_LIMIT,
   SINGLE_PURCHASE_LIMIT,
   APP_ENV,
-  TIME_UNIT_CONFIG
+  TIME_UNIT_CONFIG,
+  STAKE_DURATIONS
 } from '../services/environment';
 import {
   showToast
 } from '../services/notification';
-import { t } from '@/i18n';
+import { t, i18nState } from '@/i18n';
 import { ethers } from 'ethers';
 
 
@@ -116,6 +117,7 @@ export default {
   setup() {
     return {
       t,
+      i18nState // Return i18nState to make it available in the component instance
     };
   },
   data() {
@@ -134,54 +136,57 @@ export default {
   },
   computed: {
     durationOptions() {
-      // Use Minutes if configured, otherwise Days
-      if (TIME_UNIT_CONFIG === 'minute') {
-          return [
-            {
-              value: 0,
-              days: this.t('inject.minutes7'),
-              rate: this.t('inject.rate7')
-            },
-            {
-              value: 1,
-              days: this.t('inject.minutes15'),
-              rate: this.t('inject.rate15')
-            },
-            {
-              value: 2,
-              days: this.t('inject.minutes30'),
-              rate: this.t('inject.rate30')
-            },
-            {
-              value: 3,
-              days: this.t('inject.minutes45'),
-              rate: this.t('inject.rate45')
-            }
-          ];
-      }
+      return STAKE_DURATIONS.map((seconds, index) => {
+          // Standard Keys Mapping for backward compatibility and translation
+          const standardMap = {
+              420: { label: 'inject.minutes7', rate: 'inject.rate7' },
+              900: { label: 'inject.minutes15', rate: 'inject.rate15' },
+              1800: { label: 'inject.minutes30', rate: 'inject.rate30' },
+              2700: { label: 'inject.minutes45', rate: 'inject.rate45' },
+              3600: { label: 'inject.minutes60', rate: 'inject.rate60' },
+              604800: { label: 'inject.days7', rate: 'inject.rate7' },
+              1296000: { label: 'inject.days15', rate: 'inject.rate15' },
+              2592000: { label: 'inject.days30', rate: 'inject.rate30' },
+              3888000: { label: 'inject.days45', rate: 'inject.rate45' },
+              5184000: { label: 'inject.days60', rate: 'inject.rate60' }
+          };
 
-      return [
-        {
-          value: 0,
-          days: this.t('inject.days7'),
-          rate: this.t('inject.rate7')
-        },
-        {
-          value: 1,
-          days: this.t('inject.days15'),
-          rate: this.t('inject.rate15')
-        },
-        {
-          value: 2,
-          days: this.t('inject.days30'),
-          rate: this.t('inject.rate30')
-        },
-        {
-          value: 3,
-          days: this.t('inject.days45'),
-          rate: this.t('inject.rate45')
-        }
-      ];
+          let label = '';
+          let rate = '';
+
+          const standard = standardMap[seconds];
+          if (standard) {
+              label = this.t(standard.label);
+              rate = this.t(standard.rate);
+          } else {
+              // Dynamic Label
+              const isChinese = ['zh-cn', 'zh-tw'].includes(this.i18nState.currentLanguage);
+              
+              if (seconds % 86400 === 0) {
+                  const val = seconds / 86400;
+                  if (isChinese) label = `${val}天`;
+                  else label = `${val} ${val === 1 ? 'Day' : 'Days'}`;
+              }
+              else if (seconds % 60 === 0) {
+                  const val = seconds / 60;
+                  if (isChinese) label = `${val}分`;
+                  else label = `${val} ${val === 1 ? 'Min' : 'Mins'}`;
+              }
+              else label = `${seconds}s`;
+              
+              // Try to map rate by index
+              const rateKeys = ['inject.rate7', 'inject.rate15', 'inject.rate30', 'inject.rate45', 'inject.rate60'];
+              if (rateKeys[index]) {
+                  rate = this.t(rateKeys[index]);
+              }
+          }
+
+          return {
+              value: index,
+              days: label,
+              rate: rate
+          };
+      }).filter(opt => opt.value !== 4); // Hide index 4 for new injections
     },
     walletAddress() {
       return this.walletState.address;

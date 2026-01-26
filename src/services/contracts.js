@@ -1,5 +1,5 @@
 import { walletState } from './wallet';
-import { APP_ENV, ENABLE_SINGLE_PURCHASE_LIMIT, SINGLE_PURCHASE_LIMIT, TIME_UNIT_CONFIG } from './environment';
+import { APP_ENV, ENABLE_SINGLE_PURCHASE_LIMIT, SINGLE_PURCHASE_LIMIT, STAKE_DURATIONS } from './environment';
 import { toRaw } from 'vue';
 import { showToast } from '../services/notification';
 import { t } from '../i18n';
@@ -522,17 +522,9 @@ export const getUserStakingData = async () => {
     const validResults = results.filter(r => r !== null);
     
     const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
-    let stakeDurations;
-    
-    if (TIME_UNIT_CONFIG === 'minute') {
-         // Minute mode: 7, 15, 30, 45, 60 minutes
-         stakeDurations = [420, 900, 1800, 2700, 3600];
-    } else {
-         // Day mode: 7, 15, 30, 45, 60 days
-         stakeDurations = [604800, 1296000, 2592000, 3888000, 5184000];
-    }
+    const stakeDurations = STAKE_DURATIONS;
 
-    console.log(`[Staking Debug] Current ENV: ${APP_ENV}, isDev: ${isDev}, TimeUnit: ${TIME_UNIT_CONFIG}`);
+    console.log(`[Staking Debug] Current ENV: ${APP_ENV}, isDev: ${isDev}`);
     console.log(`[Staking Debug] Stake Durations:`, stakeDurations);
 
     const formattedData = validResults.map((item) => {
