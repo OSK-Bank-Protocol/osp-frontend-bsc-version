@@ -68,7 +68,7 @@ export default {
             } else {
                 envPrefix = 'D-BSC-'; // Dev/Local
             }
-            const version = '2.0.2';
+            const version = '2.0.3';
             return `${this.t('footer.copyright')} ${envPrefix}-${version}`;
         }
     },
