@@ -20,17 +20,19 @@
                         <div class="btn-shine"></div>
                     </button>
 
-                    <button @click.prevent="handleSwapClick" class="action-btn primary-btn hero-main-btn osk-btn">
-                        <i class="icon-plus"></i>
-                        <span>{{ t('hero.swap') }}</span>
-                        <div class="btn-shine"></div>
-                    </button>
+                    <div class="secondary-actions-row">
+                        <button @click.prevent="handleSwapClick" class="action-btn primary-btn hero-main-btn osk-btn-half">
+                            <i class="icon-plus"></i>
+                            <span>{{ t('hero.swap') }}</span>
+                            <div class="btn-shine"></div>
+                        </button>
 
-                    <button @click.prevent="handleBridgeClick" class="action-btn primary-btn hero-main-btn osk-btn">
-                        <i class="icon-plus"></i>
-                        <span>{{ t('hero.bridge') }}</span>
-                        <div class="btn-shine"></div>
-                    </button>
+                        <button @click.prevent="handleBridgeClick" class="action-btn primary-btn hero-main-btn osk-btn-half">
+                            <i class="icon-plus"></i>
+                            <span>{{ t('hero.bridge') }}</span>
+                            <div class="btn-shine"></div>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -363,6 +365,26 @@ const copyToClipboard = async (text) => {
     min-width: 90% !important;
 }
 
+.secondary-actions-row {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    width: 90%;
+    justify-content: center;
+    
+    @media (max-width: 480px) {
+        gap: 10px;
+    }
+}
+
+.osk-btn-half {
+    min-width: auto !important; /* Override default min-width */
+    flex: 1;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    white-space: nowrap;
+}
+
 .hero-section {
     position: relative;
     min-height: 100vh;
@@ -566,7 +588,7 @@ const copyToClipboard = async (text) => {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 13px;
     justify-content: center;
     margin-top: 100px !important;
 }
