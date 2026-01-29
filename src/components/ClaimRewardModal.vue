@@ -50,7 +50,7 @@
                             <div class="col-action">
                                 <button 
                                     @click="claim(level.id)" 
-                                    :disabled="parseFloat(level.rewards) <= 0 || isClaiming[level.id]" 
+                                    :disabled="isRewardZero(level.rewards) || isClaiming[level.id]" 
                                     class="mini-claim-btn"
                                     :class="{ 'processing': isClaiming[level.id] }"
                                 >
@@ -62,7 +62,7 @@
                 </div>
 
                 <!-- Node Rewards (Node Point) -->
-                <div v-if="showNodePointSection" class="reward-card">
+                <!-- <div v-if="showNodePointSection" class="reward-card">
                     <div class="card-header">
                         <span class="card-title">{{ t('claim.nodeRewardTitle') }}</span>
                         <span class="card-value">{{ truncatedNodeRewards }} <small>{{ t('common.osp') }}</small></span>
@@ -73,22 +73,22 @@
                     >
                         {{ isClaimingNodeReward ? t('claim.claiming') : t('claim.claim') }}
                     </button>
-                </div>
+                </div> -->
 
                 <!-- Dividend Rewards (Dividend Point) -->
-                <div v-if="showDividendPointSection" class="reward-card">
+                <!-- <div v-if="showDividendPointSection" class="reward-card">
                     <div class="card-header">
                         <span class="card-title">{{ t('claim.dividendRewardTitle') }}</span>
                         <span class="card-value">{{ truncatedDividendRewards }} <small>{{ t('common.osk') }}</small></span>
                     </div>
                     <button 
                         @click="claimDividendReward" 
-                        :disabled="parseFloat(dividend_rewards) <= 0 || isClaimingDividendReward" 
+                        :disabled="isRewardZero(dividend_rewards) || isClaimingDividendReward" 
                         class="action-btn primary-btn full-width"
                     >
                         {{ isClaimingDividendReward ? t('claim.claiming') : t('claim.claim') }}
                     </button>
-                </div>
+                </div> -->
             </div>
         </div>
 
@@ -130,6 +130,7 @@ import {
 } from '../services/contracts';
 import { t } from '@/i18n';
 import { showToast } from '../services/notification';
+import { ethers } from 'ethers';
 
 const emit = defineEmits(['close']);
 const isLoading = ref(true);
@@ -166,6 +167,23 @@ const truncatedDividendRewards = computed(() => {
     return truncated.toFixed(4);
 });
 
+import { getOskDecimals } from '../services/contracts';
+
+const isRewardZero = (val) => {
+    try {
+        if (!val) return true;
+        // Use BigInt check: parse string to BigInt
+        // Assuming val is like "123.456", formatUnits output.
+        // To check strict > 0, we can just check if parseFloat > 0, 
+        // OR better: check if it contains any non-zero digit.
+        // But the safest given formatUnits output is indeed parsing it back or just float.
+        // Given formatUnits returns standard decimal string:
+        return parseFloat(val) <= 0;
+    } catch (e) {
+        return true;
+    }
+};
+
 const levels = computed(() => [
     { id: 5, tag: 'S5', kpiMet: s5_kpiMet.value, rewards: s5_rewards.value },
     { id: 6, tag: 'S6', kpiMet: s6_kpiMet.value, rewards: s6_rewards.value },
@@ -183,6 +201,7 @@ const fetchRewardData = async () => {
 
     isLoading.value = true;
     try {
+        /*
         const [kpi, s5Rewards, s6Rewards, s7Rewards, nodeRewards, preacherStatus, dividendRewards] = await Promise.all([
             getTeamKpiBigNumber(),
             getS5PendingRewards(),
@@ -191,6 +210,18 @@ const fetchRewardData = async () => {
             getNodePointRewards(),
             checkIsPreacher(),
             getDividendPointRewards()
+        ]);
+        */
+       
+        // Modified to exclude node and dividend rewards
+        const [kpi, s5Rewards, s6Rewards, s7Rewards, preacherStatus] = await Promise.all([
+            getTeamKpiBigNumber(),
+            getS5PendingRewards(),
+            getS6PendingRewards(),
+            getS7PendingRewards(),
+            // getNodePointRewards(),
+            checkIsPreacher(),
+            // getDividendPointRewards()
         ]);
 
         const kpiMetS7 = kpi >= S7_THRESHOLD;
@@ -204,15 +235,14 @@ const fetchRewardData = async () => {
         s5_rewards.value = s5Rewards;
         s6_rewards.value = s6Rewards;
         s7_rewards.value = s7Rewards;
-        node_rewards.value = nodeRewards;
-        dividend_rewards.value = dividendRewards;
+        // node_rewards.value = nodeRewards;
+        // dividend_rewards.value = dividendRewards;
         isPreacher.value = preacherStatus;
 
-        const nodeRewardsNum = parseFloat(nodeRewards);
-        showNodePointSection.value = Math.floor(nodeRewardsNum * 10000) > 0;
-
-        const dividendRewardsNum = parseFloat(dividendRewards);
-        showDividendPointSection.value = Math.floor(dividendRewardsNum * 10000) > 0;
+        // Use string comparison or regex for show flags to avoid float precision issues
+        // Check if string has any non-zero digit
+        // showNodePointSection.value = /[1-9]/.test(nodeRewards);
+        // showDividendPointSection.value = /[1-9]/.test(dividendRewards);
 
     } catch (error) {
         console.error("Failed to fetch reward data:", error);
@@ -267,8 +297,10 @@ const claim = async (level) => {
 
 const claimNodeReward = async () => {
     // Temporary disable Node Reward
+    /*
     showToast(t('toast.notYetOpen'));
     return;
+    */
 
     /* Original logic commented out for temporary disable
     if (!isPreacher.value) {
@@ -296,6 +328,7 @@ const claimNodeReward = async () => {
 };
 
 const claimDividendReward = async () => {
+    /*
     if (!isPreacher.value) {
         showToast(t('toast.stake200Tokens'));
         return;
@@ -314,6 +347,7 @@ const claimDividendReward = async () => {
     } finally {
         isClaimingDividendReward.value = false;
     }
+    */
 };
 
 watch(() => walletState.isAuthenticated, (isAuth) => {

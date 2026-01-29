@@ -1,23 +1,20 @@
 import { walletState } from './wallet';
-import { APP_ENV, ENABLE_SINGLE_PURCHASE_LIMIT, SINGLE_PURCHASE_LIMIT } from './environment';
+import { APP_ENV, ENABLE_SINGLE_PURCHASE_LIMIT, SINGLE_PURCHASE_LIMIT, STAKE_DURATIONS } from './environment';
 import { toRaw } from 'vue';
 import { showToast } from '../services/notification';
 import { t } from '../i18n';
+import { ethers } from 'ethers';
 
 // --- Helper to get OSK decimals based on environment ---
-// TRC20 OSK uses 18 decimals
+// BSC OSK likely uses 18 decimals
 export const getOskDecimals = () => {
   return 18;
 };
 
-// --- Helper for BigNumber/Units (Replacement for ethers.formatUnits/parseUnits) ---
-// TronWeb injects BigNumber attached to window.tronWeb usually, or we can use the one from package if needed.
-// We assume window.tronWeb is available when these are called.
-
 // --- Cache System ---
 const callCache = new Map();
-const CACHE_TTL = 60000; // 60 seconds (increased from 30s)
-const SHORT_CACHE_TTL = 15000; // 15 seconds (increased from 5s) for user-specific data
+const CACHE_TTL = 60000; // 60 seconds
+const SHORT_CACHE_TTL = 15000; // 15 seconds
 
 const cachedCall = async (key, fetcher, ttl = CACHE_TTL, forceRefresh = false) => {
   const now = Date.now();
@@ -55,9 +52,9 @@ const batchPromises = async (items, batchSize, fn) => {
         // Execute chunk in parallel
         const chunkResults = await Promise.all(chunk.map(fn));
         results.push(...chunkResults);
-        // Add a small delay between batches to avoid rate limiting (429)
+        // Add a small delay between batches to avoid rate limiting
         if (i + batchSize < items.length) {
-            await sleep(500); // 500ms delay
+            await sleep(500); 
         }
     }
     return results;
@@ -65,93 +62,88 @@ const batchPromises = async (items, batchSize, fn) => {
 
 export const formatUnits = (value, decimals) => {
     if (!value) return "0";
-    if (!window.tronWeb) return String(value);
-    const BigNumber = window.tronWeb.BigNumber;
-    const bn = new BigNumber(value.toString());
-    return bn.div(new BigNumber(10).pow(decimals)).toFixed(decimals).replace(/\.?0+$/, "");
+    try {
+        return ethers.formatUnits(value, decimals);
+    } catch (e) {
+        console.warn("formatUnits error", e);
+        return "0";
+    }
 };
 
 export const parseUnits = (value, decimals) => {
     if (!value) return "0";
-    if (!window.tronWeb) return "0";
-    const BigNumber = window.tronWeb.BigNumber;
-    const bn = new BigNumber(value.toString());
-    return bn.times(new BigNumber(10).pow(decimals)).toFixed(0);
+    try {
+        return ethers.parseUnits(value.toString(), decimals).toString();
+    } catch (e) {
+        console.warn("parseUnits error", e);
+        return "0";
+    }
 };
 
 // --- Import ABIs ---
-// Note: Tron ABIs are technically same JSON structure usually
 import referralAbi from '../abis/referral.json';
 import stakingAbiTest from '../abis/staking_test.json';
 import stakingAbiMain from '../abis/staking_main.json';
 import ospAbi from '../abis/osp.json';
+import oskAbi from '../abis/osk.json';
 import s5poolAbi from '../abis/s5pool.json';
 import s6poolAbi from '../abis/s6pool.json';
 import s7poolAbi from '../abis/s7pool.json';
 import nodePoolAbi from '../abis/node_pool.json';
 import nodeDividendPoolAbi from '../abis/node_dividend_pool.json';
 import routerAbi from '../abis/router.json';
-import stakingHelperAbi from '../abis/staking_helper.json';
-import dynamicConfigAbi from '../abis/dynamicConfig.json';
 
 // Select staking ABI based on environment
 const stakingAbi = APP_ENV === 'PROD' ? stakingAbiMain : stakingAbiTest;
 
 // --- Contract Addresses ---
-// TODO: REPLACE ALL ADDRESSES WITH TRON BASE58 ADDRESSES (Start with T...)
+// TODO: Update these to BSC addresses
 const contractAddresses = {
   referral: {
-    production: 'TUL1RP4emDS1zWb1eEKdKwqF8JiiXX8S27', 
-    development: 'TFZfGwdpH85qEybpD1wVGAiuexkjooNN5t',
+    production: '0x8b74B65763f3fd7Aa8B1B6a533BD0Fb7b1964484', 
+    development: '0x0D2B539D053370fA0e87fE16B159a1275523Cfad',
   },
   staking: {
-    production: 'TSddkCjXMVbuXCCAPawxcn1orFvRXKLxc9', 
-    development: 'TP6NMd3dYaEMrVWw7W9ErkgMHZpraxbE2N',
+    production: '0x6A39316238718d672a2a1699F75c18F64640e44D', 
+    development: '0x08D53d6c0514AE7735F693D9fcF8AD9d49453749',
   },
   osp: {
-    production: 'TGZV43Vt2hyrxvHiZj6LQ7gGRXS46yFqte', 
-    development: 'TXuiVNDo1amHwE2zDhi6oDLMRGY1xPmSGx',
+    production: '0xAA391B130E911180ee8293525d81F3Fd35C20853', 
+    development: '0xfcc3229a8cbad0f92408282e221DeF1D7a37974a',
   },
   osk: {
-    production: 'TDk91SWz2GvwfZwMTGX21d4ngUUH8YZZAv', 
-    development: 'TCGMQinLjQLkHhp5kYoTWREWktn5jGwyvY',
+    production: '0xD98492fdc4b1853051dc251638ddA05FD2Ea0788', 
+    development: '0x598ebe75B49c9bd79230673d38FF7F581DCD1AeE',
   },
   router: {
-    production: 'TXF1xDbVGdxFGbovmmmXvBGu8ZiE3Lq4mR',
-    development: 'TMn1qrmYUMSTXo9babrJLzepKZoPC7M6Sy', 
+    production: '0x10ED43C718714eb63d5aA57B78B54704E256024E', // PancakeSwap Router?
+    development: '0xD99D1c33F9fC3444f8101754aBC46c52416550D1', 
   },
   s5pool: {
-    production: 'TSYkEarx8JThvzdWCe1Aicv8Hnu33uP916', 
-    development: 'TGMZLChPhZeVm4XWq57cp8RXqe3aEMGGkw',
+    production: '0xEd9f41717a3b6b7304e4f4CFB11D4C98DBA661Ff', 
+    development: '0x09c046ba1957D3b9276E57892b599704EAEd2c7A',
   },
   s6pool: {
-    production: 'TKPBQP2yYHq4RNWzkaahCHKiQMqHEoJVhA', 
-    development: 'TTN22vwDhADj3jFJpus8w1XKd5adqc9gUL',
+    production: '0xB614F203E457f72f8561167fC4d9fe4721403A65', 
+    development: '0xF02622F050b60a3Ff8b54Bc89e3E9F5453A79835',
   },
   s7pool: {
-    production: 'TJL8CRazdKziGkitM8jq7a6fVZG1QQd21y', 
-    development: 'TUb8JVvdgvMSrhcXqNGnjxLj8bYTkoAiPA',
+    production: '0xB4369432BF7356d5cDAE11a2824A855d4Dd88A4F', 
+    development: '0x5D765523Ab881DC413151e8e333F015060DB8B88',
   },
+  // s8pool no need in frontend
   lp: {
-    production: 'TSQXeoXD6QwHUNbLj9sLQ7P8Wy59oabuf8',
-    development: 'TF4oBwfJFTchpJnCkCv21pxJbFVYwn8JXw',
+    production: '0x09C4D306445f39C90BB4A8bCC63dF5f17AEA8b48',
+    development: '0xA8C18E845F4034eD68a9eabe604a2F4cdde6410A',
   },
   nodePool: {
-    production: 'TQEr2M7enb2zEMDS9SQrRAkGhf9nwKsFMJ',
-    development: 'TGewtMAwuV1rej7e8QJE427CZNFMzpRKGn',
+    production: '0x0000000000000000000000000000000000000000',
+    development: '0x64230522C489CA93C959d7473602cE7a88eFd8c3',
   },
   nodeDividendPool: {
-    production: 'TQJdBf6reVqQS867HRdVRCPQdEaQgGoSMF',
-    development: 'TVn1MBRBVpGz4v9W5Ykw522KZqgmyKZ9PP',
+    production: '0x0000000000000000000000000000000000000000',
+    development: '0xAA391B130E911180ee8293525d81F3Fd35C20853',
   },
-  stakingHelper: {
-    production: 'TTQrpEko4Nppf6sAfDrKq29wNYXGFQKvEU', 
-    development: 'TN5Yzxk9nZkv62Jjk9THJ7zBqa6rTDm2eE',
-  },
-  dynamicConfig: {
-    production: 'TFwe2SavtFzHhkmcXYpq1sFFU1Nm8Mev8S',
-    development: 'TQhbRrap82Ci8Cp3Hcw1xC1gUA3uQxZNQ9',
-  }
 };
 
 // --- Contract Instances ---
@@ -165,15 +157,10 @@ let s6poolContract;
 let s7poolContract;
 let nodePoolContract;
 let nodeDividendPoolContract;
-let stakingHelperContract;
-let dynamicConfigContract;
 
-export { referralContract, stakingContract, ospContract, oskContract, s5poolContract, s6poolContract, s7poolContract, nodePoolContract, nodeDividendPoolContract, stakingHelperContract, dynamicConfigContract };
+export { referralContract, stakingContract, ospContract, oskContract, s5poolContract, s6poolContract, s7poolContract, nodePoolContract, nodeDividendPoolContract };
 
 // --- KPI Thresholds ---
-// Note: These need to be checked if they are OSP or OSK values and adjusted for precision
-// Assuming these are value thresholds in 18 decimals (if OSP) or 6 (if OSK)
-// If contracts are unchanged, logic remains, but bigints need care.
 const THRESHOLDS = {
   production: {
     S1: 30n * (10n ** 18n),      
@@ -207,82 +194,48 @@ export const S7_THRESHOLD = THRESHOLDS[env].S7;
 
 
 /**
- * Initializes all contract instances using window.tronWeb
+ * Initializes all contract instances using Ethers
  */
 export const initializeContracts = async () => {
-  if (!window.tronWeb || !window.tronWeb.defaultAddress.base58) {
-    console.warn("Cannot initialize contracts without TronWeb.");
+  if (!walletState.isConnected || !walletState.signer) {
+    console.warn("Cannot initialize contracts without connection/signer.");
     return;
   }
 
-  // Ensure API Key is set for contract interactions
-  try {
-      window.tronWeb.setHeader({ "TRON-PRO-API-KEY": '95bf6fc6-2f62-4821-bf40-b5427d479f2a' });
-  } catch (e) {
-      console.warn("Failed to set TronGrid API Key header in contracts:", e);
-  }
-
   const env = APP_ENV === 'PROD' ? 'production' : 'development';
-  console.log(`Initializing contracts for ${env} environment (Tron).`);
+  console.log(`Initializing contracts for ${env} environment (BSC).`);
 
-  const initSafe = async (address, name, abi = null) => {
+  const initSafe = (address, name, abi) => {
       try {
-          // Check if address looks like a Tron address (starts with T)
-          // If it starts with 0x, tronWeb will throw.
-          if (!address.startsWith('T')) {
-              console.warn(`Skipping ${name} contract: Invalid Tron Address ${address}`);
+          if (!address || address === '0x0000000000000000000000000000000000000000') {
+              console.warn(`Skipping ${name} contract: Address not set`);
               return null;
           }
-          if (abi) {
-            // Fix for router.json which might be wrapped in { entrys: [] } or similar structure
-            let finalAbi = abi;
-            if (!Array.isArray(abi) && abi.entrys) {
-                finalAbi = abi.entrys;
-            } else if (!Array.isArray(abi) && abi.abi) {
-                 finalAbi = abi.abi;
-            }
-            return window.tronWeb.contract(finalAbi, address);
+          // Handle ABI structure if needed (for router.json sometimes having nested 'abi' prop)
+          let finalAbi = abi;
+          if (!Array.isArray(abi) && abi.abi) {
+             finalAbi = abi.abi;
           }
-          return await window.tronWeb.contract().at(address);
+          return new ethers.Contract(address, finalAbi, walletState.signer);
       } catch (e) {
           console.error(`Failed to load ${name} contract:`, e);
           return null;
       }
   };
 
-  referralContract = await initSafe(contractAddresses.referral[env], 'referral', referralAbi);
-  stakingContract = await initSafe(contractAddresses.staking[env], 'staking', stakingAbi);
-  ospContract = await initSafe(contractAddresses.osp[env], 'osp', ospAbi);
-  
-  // OSK might be a standard TRC20 without explicit ABI file sometimes, but if we treat it as token, we should have ABI.
-  // Assuming 'ospAbi' or similar TRC20 ABI can be used for OSK if it's just a token, 
-  // OR we can use window.tronWeb.contract().at(address) if it's verified. 
-  // Safest is to use a standard TRC20 ABI if available, or try without if we trust verification.
-  // For now, let's try to use ospAbi (standard TRC20 functions) for OSK if no specific oskAbi exists.
-  // Actually, wait, do we have oskAbi? No. We use ospAbi for OSK (Token) usually ok?
-  // Let's use ospAbi for OSK as well since it likely follows ERC20/TRC20 standard.
-  oskContract = await initSafe(contractAddresses.osk[env], 'osk', ospAbi);
-  
-  // For Router, we need an ABI. Usually SunSwap Router ABI. 
-  // If we don't have router.json, we might fail if not verified.
-  // Assuming we don't have router ABI imported yet?
-  // We need to import it or rely on .at().
-  // Let's check imports. No routerAbi imported. 
-  // We should try .at() for router if no ABI, or add ABI.
-  // Given user restriction "no web load", we risk failure if no ABI.
-  // But let's try to maintain .at() for router if we lack ABI.
-  routerContract = await initSafe(contractAddresses.router[env], 'router', routerAbi); 
-  
-  s5poolContract = await initSafe(contractAddresses.s5pool[env], 's5pool', s5poolAbi);
-  s6poolContract = await initSafe(contractAddresses.s6pool[env], 's6pool', s6poolAbi);
-  s7poolContract = await initSafe(contractAddresses.s7pool[env], 's7pool', s7poolAbi);
-  nodePoolContract = await initSafe(contractAddresses.nodePool[env], 'nodePool', nodePoolAbi);
-  nodeDividendPoolContract = await initSafe(contractAddresses.nodeDividendPool[env], 'nodeDividendPool', nodeDividendPoolAbi);
-  stakingHelperContract = await initSafe(contractAddresses.stakingHelper[env], 'stakingHelper', stakingHelperAbi);
-  dynamicConfigContract = await initSafe(contractAddresses.dynamicConfig[env], 'dynamicConfig', dynamicConfigAbi);
+  referralContract = initSafe(contractAddresses.referral[env], 'referral', referralAbi);
+  stakingContract = initSafe(contractAddresses.staking[env], 'staking', stakingAbi);
+  ospContract = initSafe(contractAddresses.osp[env], 'osp', ospAbi);
+  oskContract = initSafe(contractAddresses.osk[env], 'osk', oskAbi);
+  routerContract = initSafe(contractAddresses.router[env], 'router', routerAbi); 
+  s5poolContract = initSafe(contractAddresses.s5pool[env], 's5pool', s5poolAbi);
+  s6poolContract = initSafe(contractAddresses.s6pool[env], 's6pool', s6poolAbi);
+  s7poolContract = initSafe(contractAddresses.s7pool[env], 's7pool', s7poolAbi);
+  // nodePoolContract = initSafe(contractAddresses.nodePool[env], 'nodePool', nodePoolAbi);
+  // nodeDividendPoolContract = initSafe(contractAddresses.nodeDividendPool[env], 'nodeDividendPool', nodeDividendPoolAbi);
 
   walletState.contractsInitialized = true;
-  console.log("[合约] 初始化流程结束 (部分可能因地址错误跳过)");
+  console.log("[合约] 初始化流程结束");
 };
 
 export const resetContracts = () => {
@@ -296,18 +249,14 @@ export const resetContracts = () => {
   s7poolContract = null;
   nodePoolContract = null;
   nodeDividendPoolContract = null;
-  stakingHelperContract = null;
-  dynamicConfigContract = null;
   console.log("Contract instances have been reset.");
 };
 
 export const getTeamKpiBigNumber = async () => {
     if (!stakingContract || !walletState.address) return 0n;
-    // Note: BigInt cannot be directly JSON stringified for cache if we used simple cache
-    // But our cache stores raw promises/values in memory, so BigInt is fine.
     return cachedCall(`teamKpi_${walletState.address}`, async () => {
         try {
-            const kpi = await stakingContract.getTeamKpi(walletState.address).call();
+            const kpi = await stakingContract.getTeamKpi(walletState.address);
             return BigInt(kpi.toString());
         } catch (error) {
             console.error("Error fetching team KPI:", error);
@@ -316,12 +265,44 @@ export const getTeamKpiBigNumber = async () => {
     }, SHORT_CACHE_TTL);
 };
 
+export const getSelfStake = async () => {
+  if (!stakingContract || !walletState.address) return 0n;
+  return cachedCall(`selfStake_${walletState.address}`, async () => {
+    try {
+        const selfStake = await stakingContract.getSelfStake(walletState.address);
+        return BigInt(selfStake.toString());
+    } catch (error) {
+        console.error("Error fetching self stake:", error);
+        return 0n;
+    }
+  }, SHORT_CACHE_TTL);
+};
+
+export const getUserLevel = async () => {
+    if (!stakingContract || !walletState.address) return 0;
+    // Cache level to avoid frequent RPC calls if called multiple times
+    return cachedCall(`userLevel_${walletState.address}`, async () => {
+        try {
+            const [kpi, selfStake] = await Promise.all([
+                getTeamKpiBigNumber(),
+                getSelfStake()
+            ]);
+            console.log(`[UserLevel Debug] Checking level for ${walletState.address}: KPI=${kpi}, SelfStake=${selfStake}`);
+            const level = await stakingContract.getLevel(kpi, selfStake);
+            console.log(`[UserLevel Debug] Result: Level ${level}`);
+            return Number(level);
+        } catch (error) {
+            console.error("Error fetching user level:", error);
+            return 0;
+        }
+    }, SHORT_CACHE_TTL);
+};
+
 export const getUserStakedBalance = async () => {
   if (!stakingContract || !walletState.address) return "0";
   return cachedCall(`userStakedBalance_${walletState.address}`, async () => {
       try {
-        // .call() for view functions
-        const totalValue = await stakingContract.balanceOf(walletState.address).call();
+        const totalValue = await stakingContract.balanceOf(walletState.address);
         return formatUnits(totalValue, 18); 
       } catch (error) {
         console.error("Error fetching staked balance:", error);
@@ -333,7 +314,7 @@ export const getUserStakedBalance = async () => {
 export const getUserStakedBalanceByAddress = async (address) => {
   if (!stakingContract) return "0";
   try {
-    const totalValue = await stakingContract.balanceOf(address).call();
+    const totalValue = await stakingContract.balanceOf(address);
     return formatUnits(totalValue, 18);
   } catch (error) {
     return "0";
@@ -343,7 +324,7 @@ export const getUserStakedBalanceByAddress = async (address) => {
 export const getFriendsBoost = async () => {
   if (!stakingContract || !walletState.address) return "0";
   try {
-    const kpi = await stakingContract.getTeamKpi(walletState.address).call();
+    const kpi = await stakingContract.getTeamKpi(walletState.address);
     return formatUnits(kpi, 18);
   } catch (error) {
     return "0";
@@ -353,7 +334,7 @@ export const getFriendsBoost = async () => {
 export const getTeamKpiByAddress = async (address) => {
   if (!stakingContract) return "0";
   try {
-    const kpi = await stakingContract.getTeamKpi(address).call();
+    const kpi = await stakingContract.getTeamKpi(address);
     return formatUnits(kpi, 18);
   } catch (error) {
     return "0";
@@ -365,7 +346,7 @@ const getPendingRewards = async (poolContract) => {
     try {
         const env = APP_ENV === 'PROD' ? 'production' : 'development';
         const ospAddress = contractAddresses.osp[env];
-        const rewards = await poolContract.getTokenRewards(walletState.address, ospAddress).call();
+        const rewards = await poolContract.getTokenRewards(walletState.address, ospAddress);
         return formatUnits(rewards, 18);
     } catch (error) {
         return "0";
@@ -380,7 +361,7 @@ export const getNodePointRewards = async () => {
     if (!nodePoolContract || !walletState.address) return "0";
     return cachedCall(`nodePointRewards_${walletState.address}`, async () => {
         try {
-            const rewards = await nodePoolContract.getTokenRewards(walletState.address).call();
+            const rewards = await nodePoolContract.getTokenRewards(walletState.address);
             return formatUnits(rewards, 18);
         } catch (error) {
             return "0";
@@ -398,11 +379,9 @@ const claimRewards = async (poolContract) => {
         const ospAddress = contractAddresses.osp[env];
 
         // Trigger transaction
-        const txId = await poolContract.harvest(ospAddress).send();
+        const tx = await poolContract.harvest(ospAddress);
         showToast(t('toast.txSent'));
-        console.log("Claim tx sent:", txId);
-        // Tron doesn't have simple .wait(), usually we just return success on send 
-        // or poll the transaction. For UI responsiveness, we assume sent = pending success.
+        await tx.wait();
         return true;
     } catch (error) {
         console.error("Claim error:", error);
@@ -423,8 +402,9 @@ export const claimNodePointRewards = async () => {
              showToast(t('toast.stake200Tokens'));
              return false;
         }
-        await nodePoolContract.harvest().send();
+        const tx = await nodePoolContract.harvest();
         showToast(t('toast.txSent'));
+        await tx.wait();
         return true;
     } catch (error) {
         showToast(t('toast.claimFailed'));
@@ -438,7 +418,7 @@ export const getDividendPointRewards = async () => {
         try {
             const env = APP_ENV === 'PROD' ? 'production' : 'development';
             const oskAddress = contractAddresses.osk[env];
-            const rewards = await nodeDividendPoolContract.getTokenRewards(walletState.address, oskAddress).call();
+            const rewards = await nodeDividendPoolContract.getTokenRewards(walletState.address, oskAddress);
             return formatUnits(rewards, getOskDecimals()); // OSK
         } catch (error) {
             return "0";
@@ -456,8 +436,9 @@ export const claimDividendPointRewards = async () => {
              showToast(t('toast.stake200Tokens'));
              return false;
         }
-        await nodeDividendPoolContract.harvest(oskAddress).send();
+        const tx = await nodeDividendPoolContract.harvest(oskAddress);
         showToast(t('toast.txSent'));
+        await tx.wait();
         return true;
     } catch (error) {
         showToast(t('toast.claimFailed'));
@@ -469,18 +450,18 @@ export const checkIsPreacher = async () => {
     if (!stakingContract || !walletState.address) return false;
     return cachedCall(`isPreacher_${walletState.address}`, async () => {
         try {
-            return await stakingContract.isPreacher(walletState.address).call();
+            return await stakingContract.isPreacher(walletState.address);
         } catch (error) {
             return false;
         }
-    }, CACHE_TTL); // Status unlikely to change often, 30s cache is fine or even longer
+    }, CACHE_TTL);
 };
 
 export const getUserPrincipalBalance = async () => {
   if (!stakingContract || !walletState.address) return "0";
   return cachedCall(`userPrincipal_${walletState.address}`, async () => {
       try {
-        const principal = await stakingContract.balances(walletState.address).call();
+        const principal = await stakingContract.balances(walletState.address);
         return formatUnits(principal, 18);
       } catch (error) {
         return "0";
@@ -512,7 +493,7 @@ export const getUserStakingData = async () => {
   if (!stakingContract || !walletState.address) return [];
 
   try {
-    const count = await stakingContract.stakeCount(walletState.address).call();
+    const count = await stakingContract.stakeCount(walletState.address);
     const stakeCount = Number(count);
 
     if (stakeCount === 0) return [];
@@ -522,12 +503,12 @@ export const getUserStakingData = async () => {
       indices.push(i);
     }
 
-    // Process in batches of 2 to avoid rate limiting (was 5)
     const fetchRecord = async (index) => {
          try {
+             // Parallel fetch
              const [record, reward] = await Promise.all([
-                 stakingContract.userStakeRecord(walletState.address, index).call(),
-                 stakingContract.rewardOfSlot(walletState.address, index).call()
+                 stakingContract.userStakeRecord(walletState.address, index),
+                 stakingContract.rewardOfSlot(walletState.address, index)
              ]);
              return { record, reward, index };
          } catch (e) {
@@ -538,46 +519,63 @@ export const getUserStakingData = async () => {
 
     const results = await batchPromises(indices, 2, fetchRecord);
     
-    // Filter out failed fetches
     const validResults = results.filter(r => r !== null);
     
     const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
-    const stakeDurations = isDev 
-      ? [420, 900, 1800, 2700] // 7 mins, 15 mins, 30 mins, 45 mins (in seconds)
-      : [604800, 1296000, 2592000, 3888000]; // 7 days, 15 days, 30 days, 45 days
+    const stakeDurations = STAKE_DURATIONS;
+
+    console.log(`[Staking Debug] Current ENV: ${APP_ENV}, isDev: ${isDev}`);
+    console.log(`[Staking Debug] Stake Durations:`, stakeDurations);
 
     const formattedData = validResults.map((item) => {
+      // Ethers returns Result objects or arrays for structs
+      // We need to access by property name if ABI has them, or index
       const record = item.record;
       const originalIndex = item.index;
       const totalValueRaw = item.reward;
       
-      // TronWeb returns objects usually with BigNumber properties or hex strings depending on setup
-      // Assuming typical TronWeb contract response:
-      // record is { amount: BigNumber, stakeTime: BigNumber, ... }
+      // Accessing struct properties (Ethers v5/v6 support .name if ABI has names)
+      // Fallback to array indices if names missing
+      const amount = record.amount || record[0];
+      const stakeTime = record.stakeTime || record[1];
+      const stakeIndex = record.stakeIndex || record[2]; // or whatever index
+      const finalReward = record.finalReward || record.finalReward || record[4]; // Adjust based on ABI
+      const status = record.status; // boolean
 
-      const amountBn = window.tronWeb.BigNumber(record.amount);
-      const stakeTimeBn = window.tronWeb.BigNumber(record.stakeTime);
-      const stakeIndexVal = Number(record.stakeIndex);
-      const totalValueBn = window.tronWeb.BigNumber(totalValueRaw);
-      const finalRewardBn = window.tronWeb.BigNumber(record.finalReward);
+      // Convert to BigInt for calculations
+      const amountBn = BigInt(amount.toString());
+      const totalValueBn = BigInt(totalValueRaw.toString());
+      const finalRewardBn = BigInt(finalReward.toString());
 
       let interestBn;
-      if (record.status) { // Redeemed (boolean true)
-        interestBn = finalRewardBn.gt(0) ? finalRewardBn.minus(amountBn) : window.tronWeb.BigNumber(0);
+      if (status) { // Redeemed
+        interestBn = finalRewardBn > 0n ? finalRewardBn - amountBn : 0n;
       } else {
-        interestBn = totalValueBn.gt(amountBn) ? totalValueBn.minus(amountBn) : window.tronWeb.BigNumber(0);
+        interestBn = totalValueBn > amountBn ? totalValueBn - amountBn : 0n;
       }
 
-      const stakeTimeInSeconds = stakeTimeBn.toNumber();
+      const stakeTimeInSeconds = Number(stakeTime);
+      const stakeIndexVal = Number(stakeIndex);
       const stakeDurationInSeconds = stakeDurations[stakeIndexVal] || 0;
       const expiryTimestamp = (stakeTimeInSeconds + stakeDurationInSeconds) * 1000;
 
       let displayStatus = 'waiting';
-      if (record.status) {
+      if (status) {
         displayStatus = 'redeemed';
       } else if (expiryTimestamp <= Date.now()) {
         displayStatus = 'redeemable';
       }
+
+      console.log(`[Staking Debug] Item ${originalIndex}:`, {
+          stakeIndexVal,
+          stakeTime: new Date(stakeTimeInSeconds * 1000).toLocaleString(),
+          durationSeconds: stakeDurationInSeconds,
+          expiryTime: new Date(expiryTimestamp).toLocaleString(),
+          now: new Date().toLocaleString(),
+          isExpired: expiryTimestamp <= Date.now(),
+          status: status,
+          displayStatus
+      });
 
       const decimals = getOskDecimals();
 
@@ -606,8 +604,9 @@ export const getUserStakingData = async () => {
 export const unstake = async (id) => {
   if (!stakingContract) return false;
   try {
-    // TronWeb contract calls
-    await stakingContract.unstake(id).send();
+    const tx = await stakingContract.unstake(id);
+    showToast(t('toast.txSent'));
+    await tx.wait();
     showToast(t('toast.unstakeSuccess'));
     return true;
   } catch (error) {
@@ -620,7 +619,7 @@ export const unstake = async (id) => {
 export const checkIfUserHasReferrer = async () => {
   if (!referralContract || !walletState.address) return false;
   try {
-    const hasReferrer = await referralContract.isBindReferral(walletState.address).call();
+    const hasReferrer = await referralContract.isBindReferral(walletState.address);
     return hasReferrer;
   } catch (error) {
     return false;
@@ -631,8 +630,20 @@ export const getOskBalance = async () => {
   if (!oskContract || !walletState.address) return "0";
   return cachedCall(`oskBalance_${walletState.address}`, async () => {
       try {
-        const balance = await oskContract.balanceOf(walletState.address).call();
+        const balance = await oskContract.balanceOf(walletState.address);
         return formatUnits(balance, getOskDecimals());
+      } catch (error) {
+        return "0";
+      }
+  }, SHORT_CACHE_TTL);
+};
+
+export const getOspBalance = async () => {
+  if (!ospContract || !walletState.address) return "0";
+  return cachedCall(`ospBalance_${walletState.address}`, async () => {
+      try {
+        const balance = await ospContract.balanceOf(walletState.address);
+        return formatUnits(balance, 18);
       } catch (error) {
         return "0";
       }
@@ -645,7 +656,7 @@ export const getPoolOskReserves = async () => {
     try {
         const env = APP_ENV === 'PROD' ? 'production' : 'development';
         const lpAddress = contractAddresses.lp[env];
-        const reserves = await oskContract.balanceOf(lpAddress).call();
+        const reserves = await oskContract.balanceOf(lpAddress);
         return formatUnits(reserves, getOskDecimals());
     } catch (error) {
         return "0";
@@ -654,65 +665,19 @@ export const getPoolOskReserves = async () => {
 };
 
 const getExpectedOSPAmount = async (oskAmountIn) => {
-  if (!routerContract) return window.tronWeb ? new window.tronWeb.BigNumber(0) : 0n;
+  if (!routerContract) return 0n;
   const env = APP_ENV === 'PROD' ? 'production' : 'development';
   const oskAddress = contractAddresses.osk[env];
   const ospAddress = contractAddresses.osp[env];
 
   try {
-    // TronWeb call response is usually an array for multi-return
-    const routerAddress = routerContract.address;
-    const path = [oskAddress, ospAddress];
-    console.log(`[Router Debug] Contract Address: ${routerAddress}`);
-    console.log(`[Router Debug] Method: getAmountsOut`);
-    console.log(`[Router Debug] Params - amountIn: ${oskAmountIn}, path: ${JSON.stringify(path)}`);
-    
-    let amountsOut;
-    try {
-        amountsOut = await routerContract.getAmountsOut(oskAmountIn, [oskAddress, ospAddress]).call();
-        // DEBUG: Capture raw router output
-        walletState.lastRouterRawOutput = amountsOut;
-    } catch (e) {
-        console.warn("[Router Debug] Call failed", e);
-        walletState.lastRouterRawOutput = "Call Failed: " + e.message;
-        throw e;
-    }
-    console.log(`[Router Debug] amountsOut result:`, amountsOut);
-    
-    // amountsOut[1] is the output
-    // It might be a BigNumber or hex object
-    // Handle different return types (array vs object vs hex)
-    let outAmount;
-    // Log detailed structure to debug
-    // console.log("Amounts structure:", amountsOut);
-
-    if (amountsOut && amountsOut.amounts && Array.isArray(amountsOut.amounts)) {
-        // Priority: Check named key 'amounts' first (common in some TronWeb contract wrappers)
-        outAmount = amountsOut.amounts[1];
-    } else if (Array.isArray(amountsOut)) {
-        // Standard array return
-        outAmount = amountsOut[1];
-    } else if (amountsOut && typeof amountsOut === 'object') {
-        // Sometimes it's an object with numeric keys {0: ..., 1: ...} but not an Array instance
-        if (amountsOut[1]) {
-             outAmount = amountsOut[1];
-        } else {
-             // Fallback: try to convert the whole thing if it's a single value (unlikely)
-             console.warn("[Router Debug] Object returned but key 1 missing, checking key 0 or raw");
-             outAmount = amountsOut[0] || amountsOut; 
-        }
-    } else {
-         // Fallback
-         console.warn("[Router Debug] Unexpected return format");
-         outAmount = 0;
-    }
-
-    console.log(`[Router Debug] Extracted outAmount:`, outAmount ? outAmount.toString() : "null");
-    // Ensure we convert to string first to avoid BigNumber constructor issues with complex objects
-    return window.tronWeb.BigNumber(outAmount.toString());
+    // router.getAmountsOut(amountIn, [path])
+    // returns BigInt[]: [amountIn, amountOut]
+    const amountsOut = await routerContract.getAmountsOut(oskAmountIn, [oskAddress, ospAddress]);
+    return amountsOut[1]; // Return the output amount
   } catch (error) {
     console.error("[Router Debug] getAmountsOut error:", error);
-    return window.tronWeb ? new window.tronWeb.BigNumber(0) : 0n;
+    return 0n;
   }
 };
 
@@ -722,7 +687,7 @@ export const getOskAllowance = async () => {
   if (!oskContract || !walletState.address || !stakingAddress) return "0";
   return cachedCall(`oskAllowance_${walletState.address}`, async () => {
       try {
-        const allowance = await oskContract.allowance(walletState.address, stakingAddress).call();
+        const allowance = await oskContract.allowance(walletState.address, stakingAddress);
         return formatUnits(allowance, getOskDecimals());
       } catch (error) {
         return "0";
@@ -735,9 +700,8 @@ export const approveOsk = async () => {
   const stakingAddress = contractAddresses.staking[env];
   if (!oskContract || !stakingAddress) return false;
   try {
-    // MaxUint256 in hex
-    const MAX_UINT256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-    await oskContract.approve(stakingAddress, MAX_UINT256).send();
+    const tx = await oskContract.approve(stakingAddress, ethers.MaxUint256);
+    await tx.wait();
     return true;
   } catch (error) {
     console.error("Approve error:", error);
@@ -748,10 +712,8 @@ export const approveOsk = async () => {
 export const getReferrer = async () => {
   if (!referralContract || !walletState.address) return null;
   try {
-    const referrer = await referralContract.getReferral(walletState.address).call();
-    if (referrer && window.tronWeb && window.tronWeb.address) {
-        return window.tronWeb.address.fromHex(referrer);
-    }
+    const referrer = await referralContract.getReferral(walletState.address);
+    if (referrer === ethers.ZeroAddress) return null;
     return referrer;
   } catch (error) {
     return null;
@@ -761,10 +723,8 @@ export const getReferrer = async () => {
 export const getRootReferrer = async () => {
   if (!referralContract) return null;
   try {
-    const root = await referralContract.getRootAddress().call();
-    if (root && window.tronWeb && window.tronWeb.address) {
-        return window.tronWeb.address.fromHex(root);
-    }
+    const root = await referralContract.getRootAddress();
+    if (root === ethers.ZeroAddress) return null;
     return root;
   } catch (error) {
     return null;
@@ -774,7 +734,7 @@ export const getRootReferrer = async () => {
 export const isReferrerValid = async (referrerAddress) => {
   if (!referralContract) return false;
   try {
-    return await referralContract.isBindReferral(referrerAddress).call();
+    return await referralContract.isBindReferral(referrerAddress);
   } catch (error) {
     return false;
   }
@@ -787,435 +747,107 @@ export const stakeWithInviter = async (amount, stakeIndex, parentAddress) => {
   }
   try {
     const decimals = getOskDecimals();
-    // parseUnits now returns a string (integer)
-    const amountStr = parseUnits(amount, decimals);
-    const amountInWei = window.tronWeb.BigNumber(amountStr);
+    const amountStr = parseUnits(amount, decimals); // string
+    const amountInWei = BigInt(amountStr);
 
     // Slippage calc
-    const expectedOSP = await getExpectedOSPAmount(amountInWei.div(2).toFixed(0));
+    const expectedOSP = await getExpectedOSPAmount(amountInWei / 2n);
 
-    // If router fails, proceed? Or fail? Ethers version failed.
-    // Let's assume 0n means fail, BUT for compatibility with OKX/TP wallets which might fail the view call,
-    // we should allow proceeding with minOut = 0 (no slippage protection) instead of blocking the user.
-    let amountOutMin = "0";
-    
-    if (expectedOSP.eq(0) || expectedOSP.isNaN()) {
-         console.warn("Router calc failed (0 or NaN). Proceeding with minOut = 0 (No Slippage Protection) for compatibility.");
-         // Do not return error, just accept 0
-         amountOutMin = "0";
-    } else {
-         amountOutMin = expectedOSP.times(0.9).toFixed(0); // 10% slippage
+    let amountOutMin = 0n;
+    if (expectedOSP > 0n) {
+         amountOutMin = (expectedOSP * 90n) / 100n; // 10% slippage
     }
 
     const params = {
-        amount: amountInWei.toFixed(0),
-        minOut: amountOutMin.toString(),
+        amount: amountInWei,
+        minOut: amountOutMin,
         index: Number(stakeIndex),
         parent: parentAddress
     };
 
     console.log("Staking Final Params:", params);
 
-    // DEBUG: Show debug info via AlertModal for verification
-    walletState.debugInfo = {
-        title: "Debug: Slippage & Params",
-        message: `[Router Expected OSP]: ${expectedOSP.toString()}\n[Calculated minOut (10% Slippage)]: ${amountOutMin}\n\n[Contract Params]:\n${JSON.stringify(params, null, 2)}`
-    };
-
-    if (params.amount === "NaN" || params.minOut === "NaN") {
-        console.error("Critical: Staking parameters contain NaN");
-        showToast(t('toast.stakeFailed'));
-        return { success: false, error: t('toast.stakeFailed') };
-    }
-
-    await stakingContract.stakeWithInviter(
+    const tx = await stakingContract.stakeWithInviter(
       params.amount,
       params.minOut,
       params.index,
       params.parent
-    ).send();
-    
+    );
     showToast(t('toast.txSent'));
+    await tx.wait();
     return { success: true };
+
   } catch (error) {
     console.error("Stake error:", error);
-    // showToast(t('toast.stakeFailed'));
-    
-    // Extract raw error information
     let errorMessage = t('toast.stakeFailed');
-    let rawError = '';
-    
-    if (error) {
-      if (typeof error === 'string') {
-          errorMessage = error;
-          rawError = error;
-      } else if (error.message) {
-          errorMessage = error.message;
-          // Try to get more details if available
-          if (error.error || error.data) {
-             rawError = JSON.stringify(error, Object.getOwnPropertyNames(error));
-          } else {
-             rawError = error.message;
-          }
-      } else {
-          errorMessage = JSON.stringify(error);
-          rawError = errorMessage;
-      }
-    }
-
-    // Check for user cancellation
-    if (errorMessage && (
-        errorMessage.includes("Confirmation declined by user") || 
-        errorMessage.includes("User rejected") ||
-        errorMessage.includes("cancelled by user")
-    )) {
+    if (error && (error.code === 4001 || (error.message && error.message.includes("rejected")))) {
         return { success: false, cancelled: true };
     }
-    
-    return { success: false, error: errorMessage, rawError: rawError };
+    if (error && error.reason) {
+        errorMessage = error.reason;
+    }
+    return { success: false, error: errorMessage, rawError: error };
   }
 };
 
-export const getNetwork1In = async (forceRefresh = false) => {
-    if (!stakingContract) return null;
-    return cachedCall('network1In', async () => {
-        try {
-            const res = await stakingContract.network1In().call();
-            return window.tronWeb.BigNumber(res.toString()); 
-        } catch (e) {
-            console.error("getNetwork1In error", e);
-            // Return null on error so we don't assume 0 usage (which would allow full quota)
-            return null;
-        }
-    }, CACHE_TTL, forceRefresh);
-};
-
-export const getOspReserveU = async (forceRefresh = false) => {
-    if (!ospContract) return window.tronWeb ? new window.tronWeb.BigNumber(0) : 0n;
-    return cachedCall('ospReserveU', async () => {
-        try {
-            const res = await ospContract.getReserveU().call();
-            const formatted = formatUnits(res, 18);
-            console.log(`[池子状态] 当前池子大小 (ospReserveU): ${formatted} OSK`);
-            return window.tronWeb.BigNumber(res.toString());
-        } catch (e) {
-            console.error("getOspReserveU error", e);
-            return window.tronWeb.BigNumber(0);
-        }
-    }, CACHE_TTL, forceRefresh);
-};
-
-// Helper to get storage value from Tron RPC
 export const getStorageAt = async (contractAddress, slotHex) => {
-    let baseUrl;
-    let useApiKey = false;
-
-    // Prioritize wallet-provided RPC
-    if (window.tronWeb && window.tronWeb.fullNode && window.tronWeb.fullNode.host) {
-        baseUrl = window.tronWeb.fullNode.host;
-    } else {
-        // Fallback to default TronGrid
-        baseUrl = (APP_ENV !== 'PROD') ? 'https://nile.trongrid.io' : 'https://api.trongrid.io';
-        useApiKey = true;
-    }
-
-    // specific fix: if the wallet provided host is actually trongrid, we should probably still use the API key
-    // to avoid rate limiting or access issues, while respecting the rule to not send keys to private nodes.
-    if (baseUrl.includes('trongrid.io')) {
-        useApiKey = true;
-    }
-    
-    // Convert Tron address to hex (41...) then to Eth address (0x...)
-    // Some wallets might not have window.tronWeb.address.toHex ready immediately, use try-catch
-    let ethAddress;
     try {
-        const addressHex = window.tronWeb.address.toHex(contractAddress);
-        ethAddress = '0x' + addressHex.substring(2);
+        if (!walletState.provider) return null;
+        return await walletState.provider.getStorage(contractAddress, slotHex);
     } catch (e) {
-        console.warn("[getStorageAt] Address conversion failed", e);
+        console.warn("[getStorageAt] error", e);
         return null;
-    }
-    
-    // Ensure slot is 0x prefixed
-    const ethSlot = slotHex.startsWith('0x') ? slotHex : '0x' + slotHex;
-    const jsonRpcUrl = `${baseUrl}/jsonrpc`;
-    
-    const payloadRpc = {
-        jsonrpc: "2.0",
-        method: "eth_getStorageAt",
-        params: [ethAddress, ethSlot, "latest"],
-        id: 1
-    };
-    
-    const headers = { "Content-Type": "application/json" };
-    
-    // Only add API Key if using default TronGrid
-    if (useApiKey) {
-        headers["TRON-PRO-API-KEY"] = '95bf6fc6-2f62-4821-bf40-b5427d479f2a';
-    }
-
-    try {
-        const response = await fetch(jsonRpcUrl, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(payloadRpc)
-        });
-        
-        if (!response.ok) return null;
-        
-        const json = await response.json();
-        if (json.error) return null;
-        
-        return json.result;
-    } catch (e) {
-        console.warn("[getStorageAt] fetch error", e);
-        return null;
-    }
-};
-
-const getTSupplyLength = async () => {
-    if (!stakingContract) return null;
-    try {
-        const contractAddress = stakingContract.address;
-        
-        // Slot 24 in hex is 0x18. Padded to 32 bytes (64 chars)
-        const slotHex = "0x" + Number(24).toString(16).padStart(64, '0');
-        
-        // 1. Try custom JSON-RPC implementation (more reliable for TronGrid)
-        const rpcResult = await getStorageAt(contractAddress, slotHex);
-        if (rpcResult) {
-            const len = parseInt(rpcResult, 16);
-            // If parsed correctly, return it. If NaN, strictly speaking it's an error in data, 
-            // but we might want to return null to be safe.
-            return isNaN(len) ? null : len;
-        }
-
-        // 2. Fallback to tronWeb native if available (some versions)
-        if (window.tronWeb && window.tronWeb.trx && window.tronWeb.trx.getStorageAt) {
-             // Not all tronWeb instances support getStorageAt or it might differ
-             // Usually it takes address and index
-             // Just retry the original approach as fallback
-        }
-
-        // If we got here, we failed to get the length
-        return null;
-    } catch (e) {
-        console.warn("Failed to get t_supply length", e);
-        return null;
-    }
-};
-
-/**
- * Fetch Configs from DynamicConfig Contract
- */
-export const getDynamicConfigs = async (forceRefresh = false) => {
-    if (!dynamicConfigContract) return null;
-    return cachedCall('dynamicConfigs', async () => {
-        try {
-            const configs = await dynamicConfigContract.getAllConfigs().call();
-            
-            // Map the struct response (array or object depending on TronWeb version/setup)
-            // Struct: maxPoolLimit, singleStakeLimit, stakeRateLimitDuration, stakeRateLimitAmount, exhaustedStakeLimit
-            
-            // Safe extraction helper
-            const extract = (key, index) => {
-                if (configs[key]) return configs[key];
-                if (configs[index]) return configs[index];
-                return 0; // Default
-            };
-
-            const result = {
-                maxPoolLimit: window.tronWeb.BigNumber(extract('maxPoolLimit', 0).toString()),
-                singleStakeLimit: window.tronWeb.BigNumber(extract('singleStakeLimit', 1).toString()),
-                stakeRateLimitDuration: window.tronWeb.BigNumber(extract('stakeRateLimitDuration', 2).toString()),
-                stakeRateLimitAmount: window.tronWeb.BigNumber(extract('stakeRateLimitAmount', 3).toString()),
-                exhaustedStakeLimit: window.tronWeb.BigNumber(extract('exhaustedStakeLimit', 4).toString()),
-            };
-            
-            console.log(`[动态配置] 获取成功:
-                池子上限 (maxPoolLimit): ${result.maxPoolLimit.toString()}
-                单笔限额 (singleStakeLimit): ${result.singleStakeLimit.toString()}
-                限频时长 (stakeRateLimitDuration): ${result.stakeRateLimitDuration.toString()}秒
-                限频额度 (stakeRateLimitAmount): ${result.stakeRateLimitAmount.toString()}
-                耗尽低保 (exhaustedStakeLimit): ${result.exhaustedStakeLimit.toString()} (对应 ${result.exhaustedStakeLimit.div(100).toString()} OSK)
-            `);
-            
-            return result;
-        } catch (e) {
-            console.error("getDynamicConfigs error", e);
-            return null;
-        }
-    }, CACHE_TTL, forceRefresh);
-};
-
-export const getNetworkInDuration = async (durationSeconds, forceRefresh = false) => {
-    if (!stakingHelperContract || !stakingContract) return null;
-    return cachedCall(`networkIn_${durationSeconds}`, async () => {
-        try {
-            const length = await getTSupplyLength();
-            if (length === null) return null;
-            if (length === 0) return window.tronWeb.BigNumber(0);
-            
-            const res = await stakingHelperContract.getNetworkIn(stakingContract.address, length, durationSeconds).call();
-            return window.tronWeb.BigNumber(res.toString());
-        } catch (e) {
-            console.error(`getNetworkInDuration(${durationSeconds}) error`, e);
-            return null;
-        }
-    }, CACHE_TTL, forceRefresh);
-};
-
-export const getNetworkIn2Minutes = async (forceRefresh = false) => {
-    // Wrapper for backward compatibility or direct use
-    return getNetworkInDuration(120, forceRefresh);
-};
-
-export const getFrontendQuotaLimit = async (forceRefresh = false) => {
-    try {
-        if (!window.tronWeb) return "0";
-
-        // 1. Fetch Dynamic Configs
-        const configs = await getDynamicConfigs(forceRefresh);
-        const decimals = 18;
-        const BigNumber = window.tronWeb.BigNumber;
-        
-        // Defaults if config fails
-        let duration = 120;
-        let limitAmount = new BigNumber(4).times(new BigNumber(10).pow(decimals));
-        let maxPoolLimit = new BigNumber(7500).times(new BigNumber(10).pow(decimals)); // Default large enough? Or 0?
-        let exhaustedLimit = new BigNumber(0);
-
-        if (configs) {
-            // Configs are BigNumbers from TronWeb
-            const d = configs.stakeRateLimitDuration.toNumber();
-            if (d > 0) duration = d;
-            
-            // Limit Amount is in OSK units -> convert to Wei
-            limitAmount = configs.stakeRateLimitAmount.times(new BigNumber(10).pow(decimals));
-            
-            // Max Pool Limit is in OSK units -> convert to Wei
-            maxPoolLimit = configs.maxPoolLimit.times(new BigNumber(10).pow(decimals));
-            
-            // Exhausted Limit is in Cent-OSK units (50 -> 0.5) -> convert to Wei
-            // 50 / 100 * 10^18 = 50 * 10^16
-            exhaustedLimit = configs.exhaustedStakeLimit.times(new BigNumber(10).pow(16));
-        }
-
-        // 2. Fetch Network Usage
-        const netInDuration = await getNetworkInDuration(duration, forceRefresh);
-        
-        if (netInDuration === null) {
-            console.warn("[Quota Limit] RPC Data Fetch Failed. Defaulting to 0.");
-            return { value: "0", type: "数据获取失败(限流)" };
-        }
-
-        // 3. Fetch Pool Reserve
-        const poolReserveU = await getOspReserveU(forceRefresh); // Returns Wei BigNumber
-
-        console.log(`[额度计算]
-            配置时长: ${duration}s
-            配置限额: ${formatUnits(limitAmount, 18)} OSK
-            当前用量: ${formatUnits(netInDuration, 18)} OSK
-            池子上限: ${formatUnits(maxPoolLimit, 18)} OSK
-            当前池子: ${formatUnits(poolReserveU, 18)} OSK
-            低保额度: ${formatUnits(exhaustedLimit, 18)} OSK
-        `);
-
-        // 4. Calculate Quotas
-        
-        // A. Rate Limit Quota
-        let rateLimitQuota = new BigNumber(0);
-        if (limitAmount.gt(netInDuration)) {
-            rateLimitQuota = limitAmount.minus(netInDuration);
-        }
-
-        // B. Pool Limit Quota (Is pool full?)
-        // If Reserve < Max, then OK. Quota effectively unlimited by pool? 
-        // User said: "if ... getReserveU ... smaller than maxPoolLimit, then open quota, otherwise no quota"
-        // This implies if Reserve >= Max, quota is 0.
-        // If Reserve < Max, quota is determined by Rate Limit.
-        
-        let isPoolFull = poolReserveU.gte(maxPoolLimit);
-        
-        let baseQuota = isPoolFull ? new BigNumber(0) : rateLimitQuota;
-        
-        // 5. Apply Exhausted Limit Logic
-        // "if quota exhausted (or pool full), show exhaustedStakeLimit"
-        // This acts as a floor for the quota, assuming strict > 0 check isn't intended to block completely if we have exhausted limit.
-        // Wait, if baseQuota is 0, we use exhaustedLimit.
-        // If baseQuota > 0, do we take max(baseQuota, exhaustedLimit)? Yes, probably.
-        
-        let finalQuota = baseQuota;
-        if (finalQuota.lt(exhaustedLimit)) {
-             finalQuota = exhaustedLimit;
-             console.log(`[额度计算] 触发低保/耗尽额度: ${formatUnits(exhaustedLimit, 18)}`);
-        }
-        
-        const limitType = `${duration / 60}分钟限制`;
-        
-        return { value: formatUnits(finalQuota, 18), type: limitType };
-        
-    } catch (e) {
-        console.error("Quota limit calc error", e);
-        return { value: "0", type: "Error" };
     }
 };
 
 export const getEffectiveMaxStakeAmount = async (forceRefresh = false) => {
+    // Only use contract max stake amount
     const contractMaxStr = await getMaxStakeAmount(forceRefresh);
-    const quotaResult = await getFrontendQuotaLimit(forceRefresh);
-    const frontendMaxStr = typeof quotaResult === 'object' ? quotaResult.value : quotaResult;
-    const timeLimitType = typeof quotaResult === 'object' ? quotaResult.type : "未知时间限制";
+    const decimals = getOskDecimals();
     
-    // Get Dynamic Single Limit
-    const configs = await getDynamicConfigs(forceRefresh);
-    let singleLimitStr = null;
-    if (configs && configs.singleStakeLimit.gt(0)) {
-         // singleStakeLimit is OSK units
-         singleLimitStr = configs.singleStakeLimit.toString(); 
+    // Convert contract max to BigInt for precise comparison
+    let effectiveBn;
+    try {
+        effectiveBn = ethers.parseUnits(contractMaxStr, decimals);
+    } catch (e) {
+        console.warn("Error parsing max stake amount, defaulting to 0", e);
+        return "0";
     }
 
-    const contractMax = parseFloat(contractMaxStr);
-    const frontendMax = parseFloat(frontendMaxStr);
-    
-    // Return the smaller of the two (contract max vs time-based limits)
-    // If either is 0, effective max is 0 (blocked)
-    if (contractMax === 0 || frontendMax === 0) {
-         console.log(`[最大额度调试] 额度已耗尽或被锁定。合约最大: ${contractMax}, 时间限制最大: ${frontendMax}`);
-         return "0";
-    }
-    
-    let effective = Math.min(contractMax, frontendMax);
-    let winningLimit = contractMax < frontendMax ? "合约硬顶限制" : timeLimitType;
+    let winningLimit = "合约硬顶限制";
+    let finalLimit = effectiveBn;
 
-    // Apply Single Purchase Limit if enabled
     if (ENABLE_SINGLE_PURCHASE_LIMIT) {
-        let limitVal = SINGLE_PURCHASE_LIMIT;
-        
-        // Use Dynamic Limit if available
-        if (singleLimitStr) {
-            limitVal = parseFloat(singleLimitStr);
-        }
-        
-        if (limitVal < effective) {
-            effective = limitVal;
-            winningLimit = `单笔购买限制 (${limitVal})`;
+        try {
+            // Convert limit to string first to handle decimals safely, then to BigInt
+            const limitValStr = SINGLE_PURCHASE_LIMIT.toString();
+            const limitBn = ethers.parseUnits(limitValStr, decimals);
+            
+            if (limitBn < effectiveBn) {
+                finalLimit = limitBn;
+                winningLimit = `单笔购买限制 (${limitValStr})`;
+            }
+        } catch (e) {
+            console.error("Error processing single purchase limit:", e);
         }
     }
     
-    console.log(`[最大额度调试] 最终生效限额: ${effective}, 限制来源: ${winningLimit}`);
+    const finalFormatted = formatUnits(finalLimit, decimals);
     
-    return effective.toString();
+    console.log(`[最大质押额度]
+      - 合约硬顶: ${contractMaxStr}
+      - 单笔限制: ${ENABLE_SINGLE_PURCHASE_LIMIT ? SINGLE_PURCHASE_LIMIT : '未开启'}
+      - 最终生效: ${finalFormatted} (${winningLimit})`);
+    
+    return finalFormatted;
 };
 
 export const getMaxStakeAmount = async (forceRefresh = false) => {
   if (!stakingContract) return "0";
   return cachedCall('maxStakeAmount', async () => {
     try {
-        const maxStake = await stakingContract.maxStakeAmount().call();
-        const formatted = formatUnits(maxStake, getOskDecimals());
-        console.log(`[合约参数] maxStakeAmount (合约硬顶): ${formatted}`);
-        return formatted;
+        const maxStake = await stakingContract.maxStakeAmount();
+        return formatUnits(maxStake, getOskDecimals());
     } catch (error) {
         return "0";
     }
@@ -1225,9 +857,134 @@ export const getMaxStakeAmount = async (forceRefresh = false) => {
 export const rewardOfSlot = async (id) => {
     if (!stakingContract) return 0n;
     try {
-        const res = await stakingContract.rewardOfSlot(walletState.address, id).call();
+        const res = await stakingContract.rewardOfSlot(walletState.address, id);
         return BigInt(res.toString());
     } catch (error) {
         return 0n;
+    }
+};
+
+export const getMaxUnstakeAmount = async (forceRefresh = false) => {
+  if (!stakingContract) return "0";
+  return cachedCall('maxUnstakeAmount', async () => {
+    try {
+        const maxUnstake = await stakingContract.maxUnstakeAmount();
+        return formatUnits(maxUnstake, getOskDecimals());
+    } catch (error) {
+        return "0";
+    }
+  }, CACHE_TTL, forceRefresh);
+};
+
+export const getMaxStakeAbsLimit = async (forceRefresh = false) => {
+  if (!stakingContract) return "0";
+  return cachedCall('maxStakeAbsLimit', async () => {
+    try {
+        const limit = await stakingContract.maxStakeAbsLimit();
+        return formatUnits(limit, getOskDecimals());
+    } catch (error) {
+        return "0";
+    }
+  }, CACHE_TTL, forceRefresh);
+};
+
+export const unstakePrincipalOnly = async (index) => {
+  if (!stakingContract) return false;
+  try {
+    const tx = await stakingContract.unstakePrincipalOnly(index);
+    showToast(t('toast.txSent'));
+    await tx.wait();
+    showToast(t('toast.redeemPrincipalSuccess'));
+    return true;
+  } catch (error) {
+    console.error("Unstake Principal Only error:", error);
+    let errorMsg = t('toast.unstakeFailed');
+    if (error && error.reason) errorMsg = error.reason;
+    showToast(errorMsg);
+    return false;
+  }
+};
+
+export const unstakeWithBonusSplit = async (index, amountDisplay, amountsArrayWei, newStakeIndex) => {
+    if (!stakingContract) return false;
+    try {
+        const decimals = getOskDecimals();
+        const amountStr = parseUnits(amountDisplay, decimals);
+        const amountInWei = BigInt(amountStr);
+        
+        // Slippage calc
+        const expectedOSP = await getExpectedOSPAmount(amountInWei / 2n);
+        let amountOutMin = 0n;
+        if (expectedOSP > 0n) {
+             amountOutMin = (expectedOSP * 90n) / 100n; // 10% slippage
+        }
+        
+        console.log(`[Reinvest Split Debug] unstakeWithBonusSplit params:`, {
+            index: index,
+            amountsArray: amountsArrayWei.map(a => a.toString()),
+            totalAmount: amountInWei.toString(),
+            amountOutMin: amountOutMin.toString(),
+            newStakeIndex: newStakeIndex
+        });
+
+        const tx = await stakingContract.unstakeWithBonusSplit(
+            index,
+            amountsArrayWei,
+            amountOutMin,
+            newStakeIndex
+        );
+        
+        showToast(t('toast.txSent'));
+        await tx.wait();
+        showToast(t('toast.reinvestSuccess'));
+        return true;
+    } catch (error) {
+        console.error("Unstake With Bonus Split error:", error);
+        let errorMsg = t('toast.unstakeFailed');
+        if (error && error.reason) errorMsg = error.reason;
+        showToast(errorMsg);
+        return false;
+    }
+};
+
+export const unstakeWithBonus = async (index, newAmount, newStakeIndex) => {
+    if (!stakingContract) return false;
+    try {
+        const decimals = getOskDecimals();
+        const amountStr = parseUnits(newAmount, decimals);
+        const amountInWei = BigInt(amountStr);
+        
+        // Slippage calc
+        const expectedOSP = await getExpectedOSPAmount(amountInWei / 2n);
+        let amountOutMin = 0n;
+        if (expectedOSP > 0n) {
+             amountOutMin = (expectedOSP * 90n) / 100n; // 10% slippage
+        }
+        
+        console.log(`[Reinvest Debug] unstakeWithBonus params:`, {
+            index: index,
+            amountInWei: amountInWei.toString(),
+            amountDisplay: newAmount,
+            amountOutMin: amountOutMin.toString(),
+            newStakeIndex: newStakeIndex
+        });
+
+        const tx = await stakingContract.unstakeWithBonus(
+            index,
+            amountInWei,
+            amountOutMin,
+            newStakeIndex
+        );
+        
+        showToast(t('toast.txSent'));
+        await tx.wait();
+        showToast(t('toast.reinvestSuccess'));
+        return true;
+    } catch (error) {
+        console.error("Unstake With Bonus error:", error);
+        let errorMsg = t('toast.unstakeFailed');
+        if (error && error.reason) errorMsg = error.reason;
+        showToast(errorMsg);
+        return false;
     }
 };

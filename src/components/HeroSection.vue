@@ -20,11 +20,19 @@
                         <div class="btn-shine"></div>
                     </button>
 
-                    <button @click.prevent="handleSwapClick" class="action-btn primary-btn hero-main-btn osk-btn">
-                        <i class="icon-plus"></i>
-                        <span>{{ t('hero.swap') }}</span>
-                        <div class="btn-shine"></div>
-                    </button>
+                    <div class="secondary-actions-row">
+                        <button @click.prevent="handleSwapClick" class="action-btn primary-btn hero-main-btn osk-btn-half">
+                            <i class="icon-plus"></i>
+                            <span>{{ t('hero.swap') }}</span>
+                            <div class="btn-shine"></div>
+                        </button>
+
+                        <button @click.prevent="handleBridgeClick" class="action-btn primary-btn hero-main-btn osk-btn-half">
+                            <i class="icon-plus"></i>
+                            <span>{{ t('hero.bridge') }}</span>
+                            <div class="btn-shine"></div>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -55,6 +63,24 @@
                                         <AnimatedNumber :value="totalInvestmentValue" :decimals="2" />
                                         <span class="unit">{{ t('common.token') }}</span>
                                     </span>
+                                </div>
+                            </div>
+
+                            <div class="stat-tertiary" v-if="isAuthenticated" style="display: flex; flex-direction: row; justify-content: space-around;">
+                                <!-- <div class="info-row">
+                                    <span class="label">{{ t('wallet.address') }}:</span>
+                                    <span class="value address" @click="copyToClipboard(walletState.address)" title="Copy Address">
+                                        {{ formatAddress(walletState.address) }}
+                                        <i class="icon icon-copy"></i>
+                                    </span>
+                                </div> -->
+                                <div class="info-row">
+                                    <span class="label">{{ t('hero.oskBalance') }}:</span>
+                                    <span class="value"><AnimatedNumber :value="oskBalance" :decimals="2" /></span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">{{ t('hero.ospBalance') }}:</span>
+                                    <span class="value"><AnimatedNumber :value="ospBalance" :decimals="2" /></span>
                                 </div>
                             </div>
                         </div>
@@ -123,15 +149,11 @@ import {
   checkIfUserHasReferrer,
   getReferrer,
   getTeamKpiBigNumber,
-  S1_THRESHOLD,
-  S2_THRESHOLD,
-  S3_THRESHOLD,
-  S4_THRESHOLD,
-  S5_THRESHOLD,
-  S6_THRESHOLD,
-  S7_THRESHOLD,
   getUserPrincipalBalance,
-  formatUnits
+  formatUnits,
+  getUserLevel,
+  getOskBalance,
+  getOspBalance
 } from '../services/contracts';
 import {
   showToast
@@ -145,6 +167,8 @@ const stakedBalance = ref(0);
 const friendsBoost = ref(0);
 const userLevel = ref('');
 const totalInvestmentValue = ref(0);
+const oskBalance = ref(0);
+const ospBalance = ref(0);
 let fetchInterval = null; 
 
 const isInitialFetch = ref(true);
@@ -164,31 +188,30 @@ const fetchHeroData = async () => {
   }
 
   try {
-    const [newStakedBalance, kpi, principalBalance] = await Promise.all([
+    const [newStakedBalance, kpi, principalBalance, level, oskBal, ospBal] = await Promise.all([
       getUserStakedBalance(),
       getTeamKpiBigNumber(),
-      getUserPrincipalBalance()
+      getUserPrincipalBalance(),
+      getUserLevel(),
+      getOskBalance(),
+      getOspBalance()
     ]);
     
     stakedBalance.value = parseFloat(newStakedBalance) || 0;
     // 使用 formatUnits 替代 ethers.formatUnits
     friendsBoost.value = parseFloat(formatUnits(kpi, 18)) || 0;
     totalInvestmentValue.value = parseFloat(principalBalance) || 0;
+    oskBalance.value = parseFloat(oskBal) || 0;
+    ospBalance.value = parseFloat(ospBal) || 0;
     
-    if (kpi >= S7_THRESHOLD) {
-      userLevel.value = 'S7';
-    } else if (kpi >= S6_THRESHOLD) {
-      userLevel.value = 'S6';
-    } else if (kpi >= S5_THRESHOLD) {
-      userLevel.value = 'S5';
-    } else if (kpi >= S4_THRESHOLD) {
-      userLevel.value = 'S4';
-    } else if (kpi >= S3_THRESHOLD) {
-      userLevel.value = 'S3';
-    } else if (kpi >= S2_THRESHOLD) {
-      userLevel.value = 'S2';
-    } else if (kpi >= S1_THRESHOLD) {
-      userLevel.value = 'S1';
+    console.log(`[HeroSection] User Level Updated: ${level}`);
+
+    if (level > 0) {
+      if (level == 8) {
+        userLevel.value = 'S7';
+      } else {
+        userLevel.value = 'S' + level;
+      }
     } else {
       userLevel.value = '';
     }
@@ -206,6 +229,8 @@ const resetData = () => {
   friendsBoost.value = 0;
   userLevel.value = '';
   totalInvestmentValue.value = 0;
+  oskBalance.value = 0;
+  ospBalance.value = 0;
   isInitialFetch.value = true;
 };
 
@@ -233,6 +258,17 @@ const handleInjectPoolClick = () => {
 
 const handleSwapClick = () => {
   const url = 'https://www.pgglobal.io/swap';
+  // Try to open in new tab (popup)
+  const newWindow = window.open(url, '_blank');
+  
+  // If popup blocked or failed (common in in-app browsers/wallets), redirect
+  if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+    window.location.href = url;
+  }
+};
+
+const handleBridgeClick = () => {
+  const url = 'https://bridge.pgglobal.io/';
   // Try to open in new tab (popup)
   const newWindow = window.open(url, '_blank');
   
@@ -307,11 +343,46 @@ watch(() => [isAuthenticated.value, walletState.contractsInitialized], ([isAuth,
 onUnmounted(() => {
   stopFetching();
 });
+
+const formatAddress = (address) => {
+    if (!address) return '';
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+};
+
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(t('toast.copied'));
+  } catch (err) {
+    console.error('Failed to copy:', err);
+    showToast(t('toast.copyFailed'));
+  }
+};
 </script>
 
 <style scoped lang="scss">
 .osk-btn {
     min-width: 90% !important;
+}
+
+.secondary-actions-row {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    width: 90%;
+    justify-content: center;
+    
+    @media (max-width: 480px) {
+        gap: 10px;
+    }
+}
+
+.osk-btn-half {
+    min-width: auto !important; /* Override default min-width */
+    flex: 1;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    white-space: nowrap;
 }
 
 .hero-section {
@@ -517,7 +588,7 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 13px;
     justify-content: center;
     margin-top: 100px !important;
 }
@@ -631,7 +702,7 @@ onUnmounted(() => {
             border-right: none;
             border-bottom: 2px solid rgba(255, 255, 255, 0.1);
             padding-right: 0;
-            padding-bottom: 20px;
+            padding-bottom: 10px;
         }
     }
     
@@ -702,6 +773,51 @@ onUnmounted(() => {
         .unit {
             color: var(--text-muted);
             font-size: 0.75rem;
+        }
+    }
+}
+
+.stat-tertiary {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    width: 100%;
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        
+        .label {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        
+        .value {
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            
+            &.address {
+                cursor: pointer;
+                transition: color 0.2s;
+                
+                &:hover {
+                    color: var(--primary-gold);
+                }
+                
+                i {
+                    font-size: 0.9em;
+                }
+            }
         }
     }
 }

@@ -108,12 +108,11 @@ import { onMounted, onUnmounted, computed, ref, watch } from 'vue';
 import { t } from '@/i18n';
 import { walletState } from '@/services/wallet';
 import { 
-    referralContract, 
     getTeamKpiByAddress, 
     getUserStakedBalanceByAddress, 
-    formatUnits,
-    getStorageAt
+    formatUnits
 } from '@/services/contracts';
+import { getReferrals } from '@/services/subgraph';
 import { ethers } from 'ethers';
 
 export default {
@@ -132,9 +131,6 @@ export default {
     const currentReferralBalanceRaw = ref(null);
     const isLoadingReferrals = ref(true);
     const estimatedRewards = ref('0');
-    
-    // Tron Storage Slot Logic (BigInt in v6/native)
-    const arrayStartSlot = ref(null);
 
     const close = () => {
       emit('close');
@@ -178,7 +174,8 @@ export default {
 
     const currentReferralAddress = computed(() => {
       if (referrals.value.length === 0 || !referrals.value[currentIndex.value]) return t('common.loading') || '...';
-      const address = referrals.value[currentIndex.value];
+      const refObj = referrals.value[currentIndex.value];
+      const address = refObj.id;
       const prefix = address.slice(0, 6);
       const suffix = address.slice(-4);
       return `${prefix}...${suffix}`;
@@ -199,48 +196,28 @@ export default {
     const fetchReferralData = async () => {
       isLoadingReferrals.value = true;
       const userAddress = walletState.address;
-      if (!userAddress || !referralContract) {
+      if (!userAddress) {
         isLoadingReferrals.value = false;
         return;
       }
 
       try {
-          // 1. Get Count
-          const countBN = await referralContract.getReferralCount(userAddress).call();
-          const count = Number(countBN.toString());
-          referralCount.value = count;
+          const userData = await getReferrals(userAddress);
           
-          if (count === 0) {
+          if (!userData || !userData.referrals || userData.referrals.length === 0) {
               referrals.value = [];
+              referralCount.value = 0;
               isLoadingReferrals.value = false;
               return;
           }
 
-          // Initialize array with nulls
-          referrals.value = new Array(count).fill(null);
-
-          // 2. Calculate Start Slot for _children
-          // mapping(address => address[]) private _children; slot 4
-          const CHILDREN_SLOT = 4;
-          
-          // Ethers v6 Syntax
-          const coder = ethers.AbiCoder.defaultAbiCoder();
-          const slotEncoded = coder.encode(["uint256"], [CHILDREN_SLOT]);
-          
-          // Referrer Address to Hex/Eth format
-          // window.tronWeb is expected to be available
-          if (!window.tronWeb) throw new Error("TronWeb not found");
-          
-          const referrerHex = window.tronWeb.address.toHex(userAddress);
-          const referrerEthAddress = '0x' + referrerHex.substring(2);
-          
-          const keyEncoded = coder.encode(["address"], [referrerEthAddress]);
-          
-          const lengthSlot = ethers.keccak256(ethers.concat([keyEncoded, slotEncoded]));
-          
-          // The array data starts at keccak256(lengthSlot)
-          const arrayStartSlotHash = ethers.keccak256(lengthSlot);
-          arrayStartSlot.value = BigInt(arrayStartSlotHash);
+          referrals.value = userData.referrals;
+          // referralCount from subgraph is string, convert to Number
+          referralCount.value = userData.referrals.length; // Use array length which is accurate for the page
+          // Note: userData.referralCount is total count, referrals list might be paginated if large, 
+          // but our query didn't specify limits. Default is usually 100.
+          // If we need >100, we need pagination in subgraph. 
+          // User didn't ask for pagination logic yet, assuming <100 friends for now or accept 100 limit.
           
           isLoadingReferrals.value = false;
           
@@ -254,7 +231,7 @@ export default {
     };
 
     const fetchDataForCurrentReferral = async () => {
-      if (referralCount.value === 0) return;
+      if (referrals.value.length === 0) return;
       
       const idx = currentIndex.value;
       
@@ -263,39 +240,15 @@ export default {
       currentReferralBalanceRaw.value = null;
       
       try {
-        // 1. Check if we have address
-        let address = referrals.value[idx];
-        
-        if (!address) {
-            // Fetch address from storage
-            if (arrayStartSlot.value === null) return;
-            
-            // Calculate element slot: start + index
-            // Using Native BigInt for v6 compatibility
-            const elementSlotBN = arrayStartSlot.value + BigInt(idx);
-            
-            // Convert to hex string (without 0x prefix for getStorageAt helper if it handles it, 
-            // but our helper expects hex string, possibly 0x prefixed. Let's provide 0x)
-            let elementSlot = elementSlotBN.toString(16);
-            if (elementSlot.length % 2 !== 0) elementSlot = '0' + elementSlot; // padding
-            elementSlot = '0x' + elementSlot;
+        const refObj = referrals.value[idx];
+        if (!refObj) return;
 
-            const contractAddress = referralContract.address;
-            const val = await getStorageAt(contractAddress, elementSlot);
-            
-            if (val) {
-                const cleanVal = val.startsWith('0x') ? val.substring(2) : val;
-                // Last 20 bytes (40 chars) is address
-                if (cleanVal.length >= 40) {
-                     const addressHex = '41' + cleanVal.substring(cleanVal.length - 40);
-                     address = window.tronWeb.address.fromHex(addressHex);
-                     referrals.value[idx] = address;
-                }
-            }
-        }
+        const address = refObj.id;
         
         if (address) {
             // 2. Fetch Stats
+            // Convert to checksum address for consistency if needed, but contract calls usually handle lowercase fine or we can verify.
+            // ethers v6 usually handles it.
             const [kpi, balance] = await Promise.all([
               getTeamKpiByAddress(address),
               getUserStakedBalanceByAddress(address)

@@ -93,19 +93,24 @@ import {
   approveOsk,
   getEffectiveMaxStakeAmount,
   getUserStakedBalance,
-  getPoolOskReserves
+  getPoolOskReserves,
+  getOskDecimals
 } from '../services/contracts';
 import {
   ENABLE_TEMPORARY_STAKE_LIMIT,
   TEMPORARY_STAKE_LIMIT,
   ENABLE_SINGLE_PURCHASE_LIMIT,
   SINGLE_PURCHASE_LIMIT,
-  APP_ENV
+  APP_ENV,
+  TIME_UNIT_CONFIG,
+  STAKE_DURATIONS,
+  STAKE_DURATION_MAP
 } from '../services/environment';
 import {
   showToast
 } from '../services/notification';
-import { t } from '@/i18n';
+import { t, i18nState } from '@/i18n';
+import { ethers } from 'ethers';
 
 
 export default {
@@ -113,6 +118,7 @@ export default {
   setup() {
     return {
       t,
+      i18nState // Return i18nState to make it available in the component instance
     };
   },
   data() {
@@ -131,53 +137,24 @@ export default {
   },
   computed: {
     durationOptions() {
-      const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
-      if (isDev) {
-        return [
-          {
-            value: 0,
-            days: this.t('inject.minutes7'),
-            rate: this.t('inject.rate7')
-          },
-          {
-            value: 1,
-            days: this.t('inject.minutes15'),
-            rate: this.t('inject.rate15')
-          },
-          {
-            value: 2,
-            days: this.t('inject.minutes30'),
-            rate: this.t('inject.rate30')
-          },
-          {
-            value: 3,
-            days: this.t('inject.minutes45'),
-            rate: this.t('inject.rate45')
+      return STAKE_DURATIONS.map((seconds, index) => {
+          let label = '';
+          let rate = '';
+
+          const standard = STAKE_DURATION_MAP[seconds];
+          if (standard) {
+              label = this.t(standard.label);
+              rate = this.t(standard.rate);
+          } else {
+              label = `${seconds}s`; // 简单的兜底，仅显示秒数
           }
-        ];
-      }
-      return [
-        {
-          value: 0,
-          days: this.t('inject.days7'),
-          rate: this.t('inject.rate7')
-        },
-        {
-          value: 1,
-          days: this.t('inject.days15'),
-          rate: this.t('inject.rate15')
-        },
-        {
-          value: 2,
-          days: this.t('inject.days30'),
-          rate: this.t('inject.rate30')
-        },
-        {
-          value: 3,
-          days: this.t('inject.days45'),
-          rate: this.t('inject.rate45')
-        }
-      ];
+
+          return {
+              value: index,
+              days: label,
+              rate: rate
+          };
+      }).filter(opt => opt.value !== 0 && opt.value !== 1 && opt.value !== 4); // Hide index 0, 1 and 4 for new injections
     },
     walletAddress() {
       return this.walletState.address;
@@ -200,52 +177,54 @@ export default {
 
       // Note: ENABLE_SINGLE_PURCHASE_LIMIT is already handled in getEffectiveMaxStakeAmount within contracts.js
       
-      console.log(`[Limit Debug] Global Limit: ${maxAllowedByContract}, Effective User Limit: ${effectiveAmount}, Determined by: ${limitSource}`);
+      console.log(`[注入弹窗限额] 全局=${maxAllowedByContract}, 用户有效=${effectiveAmount} (${limitSource})`);
       return effectiveAmount;
     },
     isAmountInvalid() {
-      return parseFloat(this.amount) > this.effectiveMaxStakeAmount;
+      if (!this.amount) return false;
+      try {
+          const decimals = getOskDecimals();
+          const amountBn = ethers.parseUnits(this.amount, decimals);
+          const maxAllowedBn = ethers.parseUnits(this.effectiveMaxStakeAmount, decimals);
+          return amountBn > maxAllowedBn;
+      } catch (e) {
+          return false;
+      }
     },
     mainButtonState() {
-      const amountNum = parseFloat(this.amount);
-      const allowanceNum = parseFloat(this.oskAllowance);
+      // Logic using BigInt for precision
+      try {
+        if (!this.amount || parseFloat(this.amount) <= 0) {
+           return { text: this.t('inject.enterAmount'), action: 'idle', disabled: true };
+        }
 
-      if (this.isApproving) {
-        // Change text if we are polling vs just approving? 
-        // For simplicity, just keep "Approving..." or maybe "Verifying..."
-        // But "Approving..." covers the whole process.
-        return { text: this.t('inject.approving'), action: 'approving', disabled: true };
-      }
-      
-      if (!this.amount || amountNum <= 0) {
-        // Default state when no amount is entered
+        const decimals = getOskDecimals();
+        const amountBn = ethers.parseUnits(this.amount, decimals);
+        const allowanceBn = ethers.parseUnits(this.oskAllowance || '0', decimals);
+
+        if (this.isApproving) {
+            return { text: this.t('inject.approving'), action: 'approving', disabled: true };
+        }
+        
+        // Compare BigInts
+        if (allowanceBn < amountBn) {
+            return { text: this.t('inject.approveOsk'), action: 'approve', disabled: false };
+        }
+
+        if (this.walletState.isNewUser) {
+            return { text: this.t('inject.nextStep'), action: 'next_step', disabled: false };
+        } else {
+            return { text: this.t('inject.confirmStake'), action: 'stake', disabled: false };
+        }
+      } catch (e) {
+        console.error("Input parse error", e);
         return { text: this.t('inject.enterAmount'), action: 'idle', disabled: true };
-      }
-
-      if (allowanceNum < amountNum) {
-        return { text: this.t('inject.approveOsk'), action: 'approve', disabled: false };
-      }
-
-      if (this.walletState.isNewUser) {
-        return { text: this.t('inject.nextStep'), action: 'next_step', disabled: false };
-      } else {
-        return { text: this.t('inject.confirmStake'), action: 'stake', disabled: false };
       }
     },
     formattedOskBalance() {
       const displayValue = this.effectiveMaxStakeAmount;
 
-      if (ENABLE_TEMPORARY_STAKE_LIMIT) {
-        const userStaked = parseFloat(this.userStakedBalance);
-        const maxAllowedByContract = parseFloat(this.maxStakeAmount);
-        const remainingQuota = Math.max(0, TEMPORARY_STAKE_LIMIT - userStaked);
-        console.log(`[余额日志] 限时限额逻辑: 合约最大=${maxAllowedByContract}, 用户已质押=${userStaked}, 限额=${TEMPORARY_STAKE_LIMIT}, 剩余额度=${remainingQuota}, 最终显示=${displayValue}`);
-      } else {
-        console.log(`[余额日志] 无限额限制: 合约最大=${parseFloat(this.maxStakeAmount)}, 最终显示=${displayValue}`);
-      }
-
       if (isNaN(displayValue)) {
-           console.log(`[余额日志] 格式化失败: 解析结果为NaN, 返回 '0.00'`);
            return '0.00';
       }
       
@@ -284,7 +263,6 @@ export default {
         useGrouping: true // Comma separators
       });
       
-      console.log(`[余额日志] 格式化成功: ${formatted}`);
       return formatted;
     }
   },
@@ -313,13 +291,12 @@ export default {
       
       const allowanceNum = parseFloat(this.oskAllowance);
       const isApproved = allowanceNum > 0;
-      console.log(`[注入资产弹窗] 数据获取: 用户余额=${this.oskBalance}, 允许额度=${this.oskAllowance}, 合约最大可注入=${this.maxStakeAmount}, 用户已质押=${this.userStakedBalance}`);
+      console.log(`[注入弹窗数据] 余额=${this.oskBalance}, 授权=${this.oskAllowance}, 合约限额=${this.maxStakeAmount}, 已质押=${this.userStakedBalance}`);
 
       this.isLoading = false;
     },
     async fetchOskBalance() {
       const rawBalance = await getOskBalance();
-      console.log(`[余额日志] 从合约获取到的原始oskBalance: ${rawBalance}`);
       this.oskBalance = rawBalance;
     },
     async fetchOskAllowance() {
@@ -378,28 +355,39 @@ export default {
     },
     async handleMainAction() {
       if (this.mainButtonState.disabled) {
-        // If the button is logically disabled, check why and show appropriate toast.
-        // Potentially other disabled reasons can be checked here in the future.
         return;
       }
       
-      // --- Validation Logic ---
-      const inputAmount = parseFloat(this.amount);
-      const userBalance = parseFloat(this.oskBalance);
-      const maxAllowed = this.effectiveMaxStakeAmount;
+      // --- Validation Logic (BigInt) ---
+      try {
+          const decimals = getOskDecimals();
+          // Ensure this.amount is a string to prevent TypeError: value must be a string
+          const amountStr = String(this.amount || '0');
+          const inputAmountBn = ethers.parseUnits(amountStr, decimals);
+          const userBalanceBn = ethers.parseUnits(this.oskBalance || '0', decimals);
+          
+          // Ensure this.effectiveMaxStakeAmount is treated as a string too
+          const maxStakeAmountStr = String(this.effectiveMaxStakeAmount || '0');
+          const maxAllowedBn = ethers.parseUnits(maxStakeAmountStr, decimals);
 
-      if (inputAmount > userBalance) {
-          showToast(this.t('inject.insufficientBalance'));
-          return;
-      }
-      if (inputAmount > maxAllowed) {
-          // Truncate maxAllowed to 4 decimals for display
-          let maxStr = maxAllowed.toString();
-          const parts = maxStr.split('.');
-          if (parts.length === 2 && parts[1].length > 4) {
-             maxStr = parts[0] + '.' + parts[1].substring(0, 4);
+          if (inputAmountBn > userBalanceBn) {
+              showToast(this.t('inject.insufficientBalance'));
+              return;
           }
-          showToast(this.t('inject.maxAmountExceeded', { amount: maxStr }));
+          if (inputAmountBn > maxAllowedBn) {
+              // Show formatted max amount error
+              let maxStr = this.effectiveMaxStakeAmount;
+              // Simple string truncation for display if needed
+              const parts = maxStr.split('.');
+              if (parts.length === 2 && parts[1].length > 4) {
+                 maxStr = parts[0] + '.' + parts[1].substring(0, 4);
+              }
+              showToast(this.t('inject.maxAmountExceeded', { amount: maxStr }));
+              return;
+          }
+      } catch (e) {
+          console.error("Validation error", e);
+          showToast("Invalid amount format");
           return;
       }
       // --- End Validation Logic ---
@@ -422,24 +410,28 @@ export default {
             const pollInterval = setInterval(async () => {
                 attempts++;
                 await this.fetchOskAllowance();
-                const currentAllowance = parseFloat(this.oskAllowance);
-                const requiredAmount = parseFloat(this.amount);
                 
-                if (currentAllowance >= requiredAmount) {
-                    clearInterval(pollInterval);
-                    this.isApproving = false;
-                    showToast(this.t('inject.approveSuccess'));
-                } else if (attempts >= maxAttempts) {
-                    clearInterval(pollInterval);
-                    this.isApproving = false;
-                    // If time out, just let user try again or maybe it's just slow
-                    // Maybe verify one last time?
+                // Check allowance using BigInt
+                try {
+                    const decimals = getOskDecimals();
+                    const currentAllowanceBn = ethers.parseUnits(this.oskAllowance || '0', decimals);
+                    const amountStr = String(this.amount || '0');
+                    const requiredAmountBn = ethers.parseUnits(amountStr, decimals);
+                    
+                    if (currentAllowanceBn >= requiredAmountBn) {
+                        clearInterval(pollInterval);
+                        this.isApproving = false;
+                        showToast(this.t('inject.approveSuccess'));
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(pollInterval);
+                        this.isApproving = false;
+                    }
+                } catch (e) {
+                     clearInterval(pollInterval);
+                     this.isApproving = false;
                 }
             }, 3000);
             
-            // Note: We keep isApproving = true until confirmed or timeout
-            // But we should probably have a "Verifying..." text state?
-            // For now, let's keep button spinning.
             return; 
           } else {
             showToast(this.t('inject.approveFailed'));
@@ -455,6 +447,10 @@ export default {
           break;
         case 'stake':
           console.log("[注入资产弹窗] 执行操作: 直接进入质押流程");
+          console.log("[注入资产弹窗] 确认参数:", {
+            amount: this.amount,
+            duration: this.selectedDuration
+          });
           this.$emit('confirm', {
             amount: this.amount,
             duration: this.selectedDuration

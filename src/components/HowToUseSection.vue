@@ -72,7 +72,7 @@
                                     <div class="info-row">
                                         <span class="label">{{ t('howToUse.netValue') }}</span>
                                         <span class="value gold">
-                                            <AnimatedNumber :value="parseFloat(item.principal) + parseFloat(item.interest)" :decimals="4" />
+                                            {{ parseFloat(item.totalValue).toFixed(4) }}
                                         </span>
                                     </div>
                                 </div>
@@ -83,7 +83,7 @@
                                     <button v-if="item.displayStatus === 'redeemable'" 
                                             class="action-btn redeem-btn" 
                                             :disabled="unstackingStates[item.id]"
-                                            @click.prevent="handleUnstake(item.id)">
+                                            @click.prevent="handleUnstake(item)">
                                         {{ unstackingStates[item.id] ? t('howToUse.redeeming') : t('howToUse.redeem') }}
                                     </button>
                                     <button v-else-if="item.displayStatus === 'redeemed'" class="action-btn disabled-btn" disabled>
@@ -116,6 +116,16 @@
                 </div>
             </div>
         </div>
+
+        <RedeemModal 
+            v-if="showRedeemModal && selectedRedeemItem"
+            :stake-id="String(selectedRedeemItem.id)"
+            :principal="selectedRedeemItem.principal"
+            :stake-index="selectedRedeemItem.stakeIndex"
+            :total-value="selectedRedeemItem.totalValue"
+            @close="showRedeemModal = false"
+            @success="onRedeemSuccess"
+        />
     </section>
 </template>
 
@@ -137,10 +147,11 @@ import {
   rewardOfSlot,
   formatUnits
 } from '../services/contracts';
-import { APP_ENV } from '../services/environment';
+import { APP_ENV, STAKE_DURATIONS, STAKE_DURATION_MAP } from '../services/environment';
 import CountdownTimer from './CountdownTimer.vue';
-import AnimatedNumber from './AnimatedNumber.vue';
-import { t } from '@/i18n';
+import RedeemModal from './RedeemModal.vue';
+import { t, i18nState } from '@/i18n';
+import { ethers } from 'ethers';
 
 const stakingItems = ref([]);
 const totalItems = ref(0);
@@ -150,6 +161,9 @@ const currentPage = ref(1);
 const itemsPerPage = ref(4); // Reduced for compact view
 const pollingInterval = ref(null);
 const unstackingStates = reactive({});
+
+const showRedeemModal = ref(false);
+const selectedRedeemItem = ref(null);
 
 const fetchStakingData = async () => {
     if (!walletState.isAuthenticated || !walletState.contractsInitialized || !stakingContract) {
@@ -163,13 +177,13 @@ const fetchStakingData = async () => {
         const status = activeTab.value === 'investment' ? 0 : 1;
         const offset = (currentPage.value - 1) * itemsPerPage.value;
 
-        // TronWeb call requires .call() and returns an object, not array
+        // Ethers.js call returns a promise directly
         const res = await stakingContract.getUserRecords(
             walletState.address,
             offset,
             itemsPerPage.value,
             status
-        ).call();
+        );
 
         // TronWeb result handling
         // Named returns should be available as properties
@@ -179,9 +193,10 @@ const fetchStakingData = async () => {
         totalItems.value = Number(total);
         const decimals = getOskDecimals();
         const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
-        const stakeDurations = isDev 
-            ? [420, 900, 1800, 2700] // 7 mins, 15 mins, 30 mins, 45 mins (in seconds)
-            : [604800, 1296000, 2592000, 3888000]; // 7 days, 15 days, 30 days, 45 days
+        
+        const stakeDurations = STAKE_DURATIONS;
+
+        console.log(`[HowToUse Debug] isDev=${isDev}, Durations=${stakeDurations}`);
 
         let liveRewards = [];
         if (status === 0 && pageRecords.length > 0) {
@@ -191,22 +206,27 @@ const fetchStakingData = async () => {
 
         stakingItems.value = pageRecords.map((record, index) => {
             const id = Number(record.id);
-            let interest;
+            let interestBn = 0n;
             
             // Convert everything to BigInt explicitly to avoid type mixing errors
             const amountBn = BigInt(record.amount.toString());
             
             if (status === 0) {
                 const totalValue = liveRewards[index] ? BigInt(liveRewards[index].toString()) : 0n;
-                interest = totalValue > amountBn ? totalValue - amountBn : 0n;
+                interestBn = totalValue > amountBn ? totalValue - amountBn : 0n;
             } else {
                 const finalRewardBn = BigInt(record.finalReward.toString());
-                interest = finalRewardBn > 0n ? finalRewardBn - amountBn : 0n;
+                interestBn = finalRewardBn > 0n ? finalRewardBn - amountBn : 0n;
             }
 
+            const totalValueBn = amountBn + interestBn;
+
             const stakeTimeInSeconds = Number(record.stakeTime);
-            const stakeDurationInSeconds = stakeDurations[Number(record.stakeIndex)];
+            const stakeIndexVal = Number(record.stakeIndex);
+            const stakeDurationInSeconds = stakeDurations[stakeIndexVal] || 0;
             const expiryTimestamp = (stakeTimeInSeconds + stakeDurationInSeconds) * 1000;
+
+            console.log(`[HowToUse Item] Index=${stakeIndexVal}, Time=${stakeTimeInSeconds}, Duration=${stakeDurationInSeconds}, Expiry=${expiryTimestamp}, Now=${Date.now()}`);
 
             let displayStatus = 'waiting';
             if (record.status === true) {
@@ -216,8 +236,9 @@ const fetchStakingData = async () => {
             }
 
             return {
-                principal: formatUnits(record.amount, decimals),
-                interest: formatUnits(interest, decimals),
+                principal: formatUnits(amountBn, decimals),
+                interest: formatUnits(interestBn, decimals),
+                totalValue: formatUnits(totalValueBn, decimals), // Pre-calculated total
                 stakeDate: new Date(stakeTimeInSeconds * 1000).toLocaleString('zh-CN', {
                     year: 'numeric', month: '2-digit', day: '2-digit',
                     hour: '2-digit', minute: '2-digit', second: '2-digit',
@@ -239,16 +260,13 @@ const fetchStakingData = async () => {
     }
 };
 
-const handleUnstake = async (id) => {
-    unstackingStates[id] = true;
-    try {
-        const success = await unstake(id);
-        if (success) {
-            await fetchStakingData();
-        }
-    } finally {
-        unstackingStates[id] = false;
-    }
+const handleUnstake = (item) => {
+    selectedRedeemItem.value = item;
+    showRedeemModal.value = true;
+};
+
+const onRedeemSuccess = () => {
+    fetchStakingData();
 };
 
 const startPolling = () => {
@@ -313,27 +331,15 @@ const nextPage = () => {
 };
 
 const getDurationLabel = (index) => {
-    const isDev = APP_ENV === 'test' || APP_ENV === 'dev';
-    const keys = isDev 
-        ? ['inject.minutes7', 'inject.minutes15', 'inject.minutes30', 'inject.minutes45']
-        : ['inject.days7', 'inject.days15', 'inject.days30', 'inject.days45'];
-    
-    // Check if translation exists, otherwise fall back to hardcoded string to avoid empty display
-    const key = keys[index] || keys[0];
-    const translation = t(key);
-    
-    // If translation returns the key itself (meaning missing translation), return a fallback
-    if (translation === key) {
-        if (isDev) {
-            const mins = [7, 15, 30, 45];
-            return `${mins[index] || 7} Mins`;
-        } else {
-            const days = [7, 15, 30, 45];
-            return `${days[index] || 7} Days`;
-        }
+    const durationSeconds = STAKE_DURATIONS[index] || 0;
+    if (durationSeconds === 0) return '';
+
+    const standard = STAKE_DURATION_MAP[durationSeconds];
+    if (standard) {
+        return t(standard.label);
     }
     
-    return translation;
+    return `${durationSeconds}s`; // Simple fallback for unknown durations
 };
 </script>
 
