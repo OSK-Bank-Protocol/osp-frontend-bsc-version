@@ -25,6 +25,12 @@
                         <span>{{ t('hero.swap') }}</span>
                         <div class="btn-shine"></div>
                     </button>
+
+                    <button @click.prevent="handleBridgeClick" class="action-btn primary-btn hero-main-btn osk-btn">
+                        <i class="icon-plus"></i>
+                        <span>{{ t('hero.bridge') }}</span>
+                        <div class="btn-shine"></div>
+                    </button>
                 </div>
             </div>
 
@@ -250,6 +256,17 @@ const handleInjectPoolClick = () => {
 
 const handleSwapClick = () => {
   const url = 'https://www.pgglobal.io/swap';
+  // Try to open in new tab (popup)
+  const newWindow = window.open(url, '_blank');
+  
+  // If popup blocked or failed (common in in-app browsers/wallets), redirect
+  if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+    window.location.href = url;
+  }
+};
+
+const handleBridgeClick = () => {
+  const url = 'https://bridge.pgglobal.io/';
   // Try to open in new tab (popup)
   const newWindow = window.open(url, '_blank');
   
