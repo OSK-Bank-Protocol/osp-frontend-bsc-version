@@ -103,7 +103,8 @@ import {
   SINGLE_PURCHASE_LIMIT,
   APP_ENV,
   TIME_UNIT_CONFIG,
-  STAKE_DURATIONS
+  STAKE_DURATIONS,
+  STAKE_DURATION_MAP
 } from '../services/environment';
 import {
   showToast
@@ -137,26 +138,10 @@ export default {
   computed: {
     durationOptions() {
       return STAKE_DURATIONS.map((seconds, index) => {
-          // Standard Keys Mapping for backward compatibility and translation
-          const standardMap = {
-              420: { label: 'inject.minutes7', rate: 'inject.rate7' },
-              900: { label: 'inject.minutes15', rate: 'inject.rate15' },
-              1800: { label: 'inject.minutes30', rate: 'inject.rate30' },
-              2700: { label: 'inject.minutes45', rate: 'inject.rate45' },
-              3600: { label: 'inject.minutes60', rate: 'inject.rate60' },
-              60: { label: 'inject.minutes1', rate: 'inject.rate1' },
-              604800: { label: 'inject.days7', rate: 'inject.rate7' },
-              1296000: { label: 'inject.days15', rate: 'inject.rate15' },
-              2592000: { label: 'inject.days30', rate: 'inject.rate30' },
-              3888000: { label: 'inject.days45', rate: 'inject.rate45' },
-              5184000: { label: 'inject.days60', rate: 'inject.rate60' },
-              86400: { label: 'inject.days1', rate: 'inject.rate1' }
-          };
-
           let label = '';
           let rate = '';
 
-          const standard = standardMap[seconds];
+          const standard = STAKE_DURATION_MAP[seconds];
           if (standard) {
               label = this.t(standard.label);
               rate = this.t(standard.rate);
