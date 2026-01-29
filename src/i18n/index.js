@@ -24,7 +24,7 @@ const languagePacks = {
     // Footer
     'footer.aboutUs': '了解我们',
     'footer.whitepaper': '白皮书',
-    'footer.copyright': '© 2025 OSK Bank Protocol. ALL RIGHTS RESERVED.',
+    'footer.copyright': '© 2026 OSK Bank Protocol. ALL RIGHTS RESERVED.',
     
     // Hero Section
     'hero.subtitle': '以飞轮引擎 重塑全球资产流',
@@ -268,7 +268,7 @@ const languagePacks = {
     // Footer
     'footer.aboutUs': '了解我們',
     'footer.whitepaper': '白皮書',
-    'footer.copyright': '© 2025 OSK Bank Protocol. ALL RIGHTS RESERVED.',
+    'footer.copyright': '© 2026 OSK Bank Protocol. ALL RIGHTS RESERVED.',
     
     // Hero Section
     'hero.subtitle': '以飛輪引擎 重塑全球資產流',
@@ -508,7 +508,7 @@ const languagePacks = {
     // Footer
     'footer.aboutUs': 'About Us',
     'footer.whitepaper': 'Whitepaper',
-    'footer.copyright': '© 2025 OSK Bank Protocol. ALL RIGHTS RESERVED.',
+    'footer.copyright': '© 2026 OSK Bank Protocol. ALL RIGHTS RESERVED.',
     
     // Hero Section
     'hero.subtitle': 'Reshaping Global Asset Flows with Flywheel Engine',
@@ -749,7 +749,7 @@ const languagePacks = {
     // Footer
     'footer.aboutUs': '私たちについて',
     'footer.whitepaper': 'ホワイトペーパー',
-    'footer.copyright': '© 2025 OSK Bank Protocol. ALL RIGHTS RESERVED.',
+    'footer.copyright': '© 2026 OSK Bank Protocol. ALL RIGHTS RESERVED.',
     
     // Hero Section
     'hero.subtitle': 'フライホイールエンジンで世界の資産フローを再形成',
@@ -982,7 +982,7 @@ const languagePacks = {
     // Footer
     'footer.aboutUs': '우리에 대해',
     'footer.whitepaper': '백서',
-    'footer.copyright': '© 2025 OSK Bank Protocol. ALL RIGHTS RESERVED.',
+    'footer.copyright': '© 2026 OSK Bank Protocol. ALL RIGHTS RESERVED.',
     
     // Hero Section
     'hero.subtitle': '플라이휠 엔진으로 글로벌 자산 흐름 재편',
