@@ -100,15 +100,15 @@ const stakingAbi = APP_ENV === 'PROD' ? stakingAbiMain : stakingAbiTest;
 // TODO: Update these to BSC addresses
 const contractAddresses = {
   referral: {
-    production: '0x0000000000000000000000000000000000000000', 
+    production: '0x8b74B65763f3fd7Aa8B1B6a533BD0Fb7b1964484', 
     development: '0x0D2B539D053370fA0e87fE16B159a1275523Cfad',
   },
   staking: {
-    production: '0x0000000000000000000000000000000000000000', 
+    production: '0x6A39316238718d672a2a1699F75c18F64640e44D', 
     development: '0x08D53d6c0514AE7735F693D9fcF8AD9d49453749',
   },
   osp: {
-    production: '0x0000000000000000000000000000000000000000', 
+    production: '0xAA391B130E911180ee8293525d81F3Fd35C20853', 
     development: '0xfcc3229a8cbad0f92408282e221DeF1D7a37974a',
   },
   osk: {
@@ -120,20 +120,20 @@ const contractAddresses = {
     development: '0xD99D1c33F9fC3444f8101754aBC46c52416550D1', 
   },
   s5pool: {
-    production: '0x0000000000000000000000000000000000000000', 
+    production: '0xEd9f41717a3b6b7304e4f4CFB11D4C98DBA661Ff', 
     development: '0x09c046ba1957D3b9276E57892b599704EAEd2c7A',
   },
   s6pool: {
-    production: '0x0000000000000000000000000000000000000000', 
+    production: '0xB614F203E457f72f8561167fC4d9fe4721403A65', 
     development: '0xF02622F050b60a3Ff8b54Bc89e3E9F5453A79835',
   },
   s7pool: {
-    production: '0x0000000000000000000000000000000000000000', 
+    production: '0xB4369432BF7356d5cDAE11a2824A855d4Dd88A4F', 
     development: '0x5D765523Ab881DC413151e8e333F015060DB8B88',
   },
   // s8pool no need in frontend
   lp: {
-    production: '0x0000000000000000000000000000000000000000',
+    production: '0x09C4D306445f39C90BB4A8bCC63dF5f17AEA8b48',
     development: '0xA8C18E845F4034eD68a9eabe604a2F4cdde6410A',
   },
   nodePool: {
@@ -231,8 +231,8 @@ export const initializeContracts = async () => {
   s5poolContract = initSafe(contractAddresses.s5pool[env], 's5pool', s5poolAbi);
   s6poolContract = initSafe(contractAddresses.s6pool[env], 's6pool', s6poolAbi);
   s7poolContract = initSafe(contractAddresses.s7pool[env], 's7pool', s7poolAbi);
-  nodePoolContract = initSafe(contractAddresses.nodePool[env], 'nodePool', nodePoolAbi);
-  nodeDividendPoolContract = initSafe(contractAddresses.nodeDividendPool[env], 'nodeDividendPool', nodeDividendPoolAbi);
+  // nodePoolContract = initSafe(contractAddresses.nodePool[env], 'nodePool', nodePoolAbi);
+  // nodeDividendPoolContract = initSafe(contractAddresses.nodeDividendPool[env], 'nodeDividendPool', nodeDividendPoolAbi);
 
   walletState.contractsInitialized = true;
   console.log("[合约] 初始化流程结束");

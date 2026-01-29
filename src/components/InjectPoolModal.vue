@@ -144,11 +144,13 @@ export default {
               1800: { label: 'inject.minutes30', rate: 'inject.rate30' },
               2700: { label: 'inject.minutes45', rate: 'inject.rate45' },
               3600: { label: 'inject.minutes60', rate: 'inject.rate60' },
+              60: { label: 'inject.minutes1', rate: 'inject.rate1' },
               604800: { label: 'inject.days7', rate: 'inject.rate7' },
               1296000: { label: 'inject.days15', rate: 'inject.rate15' },
               2592000: { label: 'inject.days30', rate: 'inject.rate30' },
               3888000: { label: 'inject.days45', rate: 'inject.rate45' },
-              5184000: { label: 'inject.days60', rate: 'inject.rate60' }
+              5184000: { label: 'inject.days60', rate: 'inject.rate60' },
+              86400: { label: 'inject.days1', rate: 'inject.rate1' }
           };
 
           let label = '';
@@ -159,26 +161,7 @@ export default {
               label = this.t(standard.label);
               rate = this.t(standard.rate);
           } else {
-              // Dynamic Label
-              const isChinese = ['zh-cn', 'zh-tw'].includes(this.i18nState.currentLanguage);
-              
-              if (seconds % 86400 === 0) {
-                  const val = seconds / 86400;
-                  if (isChinese) label = `${val}天`;
-                  else label = `${val} ${val === 1 ? 'Day' : 'Days'}`;
-              }
-              else if (seconds % 60 === 0) {
-                  const val = seconds / 60;
-                  if (isChinese) label = `${val}分`;
-                  else label = `${val} ${val === 1 ? 'Min' : 'Mins'}`;
-              }
-              else label = `${seconds}s`;
-              
-              // Try to map rate by index
-              const rateKeys = ['inject.rate7', 'inject.rate15', 'inject.rate30', 'inject.rate45', 'inject.rate60'];
-              if (rateKeys[index]) {
-                  rate = this.t(rateKeys[index]);
-              }
+              label = `${seconds}s`; // 简单的兜底，仅显示秒数
           }
 
           return {
@@ -186,7 +169,7 @@ export default {
               days: label,
               rate: rate
           };
-      }).filter(opt => opt.value !== 4); // Hide index 4 for new injections
+      }).filter(opt => opt.value !== 0 && opt.value !== 1 && opt.value !== 4); // Hide index 0, 1 and 4 for new injections
     },
     walletAddress() {
       return this.walletState.address;

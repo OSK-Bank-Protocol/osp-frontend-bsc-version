@@ -298,11 +298,13 @@ export default {
               1800: { label: 'inject.minutes30', rate: 'inject.rate30' },
               2700: { label: 'inject.minutes45', rate: 'inject.rate45' },
               3600: { label: 'inject.minutes60', rate: 'inject.rate60' },
+              60: { label: 'inject.minutes1', rate: 'inject.rate1' },
               604800: { label: 'inject.days7', rate: 'inject.rate7' },
               1296000: { label: 'inject.days15', rate: 'inject.rate15' },
               2592000: { label: 'inject.days30', rate: 'inject.rate30' },
               3888000: { label: 'inject.days45', rate: 'inject.rate45' },
-              5184000: { label: 'inject.days60', rate: 'inject.rate60' }
+              5184000: { label: 'inject.days60', rate: 'inject.rate60' },
+              86400: { label: 'inject.days1', rate: 'inject.rate1' }
           };
 
           let label = '';
@@ -313,25 +315,7 @@ export default {
               label = this.t(standard.label);
               rate = this.t(standard.rate);
           } else {
-              // Dynamic Label
-              const isChinese = ['zh-cn', 'zh-tw'].includes(this.i18nState.currentLanguage);
-
-              if (seconds % 86400 === 0) {
-                  const val = seconds / 86400;
-                  if (isChinese) label = `${val}天`;
-                  else label = `${val} ${val === 1 ? 'Day' : 'Days'}`;
-              }
-              else if (seconds % 60 === 0) {
-                  const val = seconds / 60;
-                  if (isChinese) label = `${val}分`;
-                  else label = `${val} ${val === 1 ? 'Min' : 'Mins'}`;
-              }
-              else label = `${seconds}s`;
-              
-              const rateKeys = ['inject.rate7', 'inject.rate15', 'inject.rate30', 'inject.rate45', 'inject.rate60'];
-              if (rateKeys[index]) {
-                  rate = this.t(rateKeys[index]);
-              }
+              label = `${seconds}s`; // 简单的兜底，仅显示秒数
           }
 
           return {
@@ -347,8 +331,8 @@ export default {
              return this.durationOptions.filter(opt => opt.value === 4);
         }
 
-        // Otherwise, show options >= stakeIndex BUT exclude index 4 (60 days/mins)
-        return this.durationOptions.filter(opt => opt.value >= this.stakeIndex && opt.value !== 4);
+        // Otherwise, show options >= stakeIndex BUT exclude index 4 (1 day) AND exclude index 0 (7 days) and 1 (15 days)
+        return this.durationOptions.filter(opt => opt.value >= this.stakeIndex && opt.value !== 4 && opt.value !== 0 && opt.value !== 1);
     },
     isAmountInvalid() {
         if (!this.newAmount) return false;

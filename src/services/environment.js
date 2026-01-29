@@ -76,7 +76,7 @@ export const TIME_UNIT_CONFIG = (APP_ENV === 'test' || APP_ENV === 'dev') ? 'min
  * Defines the duration for each stake index (0-4).
  */
 const STAKE_DURATIONS_MINUTE = [420, 900, 1800, 2700, 60]; // 7, 15, 30, 45, 1 minutes
-const STAKE_DURATIONS_DAY = [604800, 1296000, 2592000, 3888000, 5184000]; // 7, 15, 30, 45, 60 days
+const STAKE_DURATIONS_DAY = [604800, 1296000, 2592000, 3888000, 86400]; // 7, 15, 30, 45, 1 days
 
 export const STAKE_DURATIONS = TIME_UNIT_CONFIG === 'minute' ? STAKE_DURATIONS_MINUTE : STAKE_DURATIONS_DAY;
 
