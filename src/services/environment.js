@@ -75,9 +75,30 @@ export const TIME_UNIT_CONFIG = (APP_ENV === 'test' || APP_ENV === 'dev') ? 'min
  * Stake Durations Configuration (in seconds)
  * Defines the duration for each stake index (0-4).
  */
-const STAKE_DURATIONS_MINUTE = [420, 900, 1800, 2700, 60]; // 7, 15, 30, 45, 60 minutes
-const STAKE_DURATIONS_DAY = [604800, 1296000, 2592000, 3888000, 5184000]; // 7, 15, 30, 45, 60 days
+const STAKE_DURATIONS_MINUTE = [420, 900, 1800, 2700, 60]; // 7, 15, 30, 45, 1 minutes
+const STAKE_DURATIONS_DAY = [604800, 1296000, 2592000, 3888000, 86400]; // 7, 15, 30, 45, 1 days
 
 export const STAKE_DURATIONS = TIME_UNIT_CONFIG === 'minute' ? STAKE_DURATIONS_MINUTE : STAKE_DURATIONS_DAY;
+
+/**
+ * Stake Duration to I18n Keys Mapping
+ * Maps duration in seconds to label and rate translation keys.
+ */
+export const STAKE_DURATION_MAP = {
+    // Minutes
+    60: { label: 'inject.minutes1', rate: 'inject.rate1' },
+    420: { label: 'inject.minutes7', rate: 'inject.rate7' },
+    900: { label: 'inject.minutes15', rate: 'inject.rate15' },
+    1800: { label: 'inject.minutes30', rate: 'inject.rate30' },
+    2700: { label: 'inject.minutes45', rate: 'inject.rate45' },
+    3600: { label: 'inject.minutes60', rate: 'inject.rate60' },
+    // Days
+    86400: { label: 'inject.days1', rate: 'inject.rate1' },
+    604800: { label: 'inject.days7', rate: 'inject.rate7' },
+    1296000: { label: 'inject.days15', rate: 'inject.rate15' },
+    2592000: { label: 'inject.days30', rate: 'inject.rate30' },
+    3888000: { label: 'inject.days45', rate: 'inject.rate45' },
+    5184000: { label: 'inject.days60', rate: 'inject.rate60' }
+};
 
 
