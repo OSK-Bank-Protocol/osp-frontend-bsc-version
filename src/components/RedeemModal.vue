@@ -443,11 +443,11 @@ export default {
     
     // Pre-fill new amount with principal
     this.newAmount = this.principal;
-    // Pre-select current duration or lowest valid
+    // Pre-select 45 days (index 3) if valid, otherwise lowest valid
     if (this.validDurationOptions.length > 0) {
-        // Try to keep same duration index if possible
-        const exists = this.validDurationOptions.find(o => o.value === this.stakeIndex);
-        this.selectedDuration = exists ? this.stakeIndex : this.validDurationOptions[0].value;
+        const defaultIndex = 3;
+        const exists = this.validDurationOptions.find(o => o.value === defaultIndex);
+        this.selectedDuration = exists ? defaultIndex : this.validDurationOptions[0].value;
     }
     
     this.isLoading = false;
