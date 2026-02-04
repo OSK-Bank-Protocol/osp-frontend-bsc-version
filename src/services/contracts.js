@@ -141,8 +141,8 @@ const contractAddresses = {
     development: '0x64230522C489CA93C959d7473602cE7a88eFd8c3',
   },
   nodeDividendPool: {
-    production: '0x0000000000000000000000000000000000000000',
-    development: '0xAA391B130E911180ee8293525d81F3Fd35C20853',
+    production: '0x87597fe726398C7B937BA55940e3D41e8161f718',
+    development: '0x385a5C0F1d7936fBC8168B60B4408184f4fE5f40',
   },
 };
 
@@ -232,7 +232,7 @@ export const initializeContracts = async () => {
   s6poolContract = initSafe(contractAddresses.s6pool[env], 's6pool', s6poolAbi);
   s7poolContract = initSafe(contractAddresses.s7pool[env], 's7pool', s7poolAbi);
   // nodePoolContract = initSafe(contractAddresses.nodePool[env], 'nodePool', nodePoolAbi);
-  // nodeDividendPoolContract = initSafe(contractAddresses.nodeDividendPool[env], 'nodeDividendPool', nodeDividendPoolAbi);
+  nodeDividendPoolContract = initSafe(contractAddresses.nodeDividendPool[env], 'nodeDividendPool', nodeDividendPoolAbi);
 
   walletState.contractsInitialized = true;
   console.log("[合约] 初始化流程结束");
@@ -421,6 +421,19 @@ export const getDividendPointRewards = async () => {
             const rewards = await nodeDividendPoolContract.getTokenRewards(walletState.address, oskAddress);
             return formatUnits(rewards, getOskDecimals()); // OSK
         } catch (error) {
+            return "0";
+        }
+    }, SHORT_CACHE_TTL);
+};
+
+export const getUserStakes = async () => {
+    if (!nodeDividendPoolContract || !walletState.address) return "0";
+    return cachedCall(`userStakes_${walletState.address}`, async () => {
+        try {
+            const stakes = await nodeDividendPoolContract.userStakes(walletState.address);
+            return formatUnits(stakes, 18);
+        } catch (error) {
+            console.error("Error fetching user stakes:", error);
             return "0";
         }
     }, SHORT_CACHE_TTL);
