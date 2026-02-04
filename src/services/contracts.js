@@ -120,15 +120,15 @@ const contractAddresses = {
     development: '0xD99D1c33F9fC3444f8101754aBC46c52416550D1', 
   },
   s5pool: {
-    production: '0xEd9f41717a3b6b7304e4f4CFB11D4C98DBA661Ff', 
+    production: '0x5D9CAb316A01a1Ba10e41F69dac55c92F7969721', 
     development: '0x09c046ba1957D3b9276E57892b599704EAEd2c7A',
   },
   s6pool: {
-    production: '0xB614F203E457f72f8561167fC4d9fe4721403A65', 
+    production: '0x5d5a4E3d1D19aFc9213e41D36A7942Ec1DcC3f0F', 
     development: '0xF02622F050b60a3Ff8b54Bc89e3E9F5453A79835',
   },
   s7pool: {
-    production: '0xB4369432BF7356d5cDAE11a2824A855d4Dd88A4F', 
+    production: '0xC3379180F5Dc8923A8F67E1de913C2deCc310EC4', 
     development: '0x5D765523Ab881DC413151e8e333F015060DB8B88',
   },
   // s8pool no need in frontend
