@@ -76,19 +76,24 @@
                 </div> -->
 
                 <!-- Dividend Rewards (Dividend Point) -->
-                <!-- <div v-if="showDividendPointSection" class="reward-card">
+                <div v-if="showDividendPointSection" class="reward-card">
                     <div class="card-header">
                         <span class="card-title">{{ t('claim.dividendRewardTitle') }}</span>
-                        <span class="card-value">{{ truncatedDividendRewards }} <small>{{ t('common.osk') }}</small></span>
+                        <span class="card-value">{{ truncatedDividendRewards }} <small>OSP</small></span>
                     </div>
-                    <button 
-                        @click="claimDividendReward" 
-                        :disabled="isRewardZero(dividend_rewards) || isClaimingDividendReward" 
-                        class="action-btn primary-btn full-width"
-                    >
-                        {{ isClaimingDividendReward ? t('claim.claiming') : t('claim.claim') }}
-                    </button>
-                </div> -->
+                    <div class="btn-wrapper">
+                        <button 
+                            @click="claimDividendReward" 
+                            :disabled="isRewardZero(dividend_rewards) || isClaimingDividendReward" 
+                            class="action-btn primary-btn full-width"
+                        >
+                            {{ isClaimingDividendReward ? t('claim.claiming') : t('claim.claim') }}
+                        </button>
+                        <div v-if="nodeStatus" class="node-badge" :class="nodeStatus">
+                            {{ nodeStatus === 'big' ? 'Master' : 'Elite' }}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -124,6 +129,7 @@ import {
     checkIsPreacher,
     getDividendPointRewards,
     claimDividendPointRewards,
+    getUserStakes,
     S5_THRESHOLD,
     S6_THRESHOLD,
     S7_THRESHOLD
@@ -152,6 +158,7 @@ const isClaiming = ref({
 });
 const isClaimingNodeReward = ref(false);
 const isClaimingDividendReward = ref(false);
+const nodeStatus = ref(null);
 
 const truncatedNodeRewards = computed(() => {
     const num = parseFloat(node_rewards.value);
@@ -214,15 +221,18 @@ const fetchRewardData = async () => {
         */
        
         // Modified to exclude node and dividend rewards
-        const [kpi, s5Rewards, s6Rewards, s7Rewards, preacherStatus] = await Promise.all([
+        const [kpi, s5Rewards, s6Rewards, s7Rewards, preacherStatus, dividendRewards, userStakes] = await Promise.all([
             getTeamKpiBigNumber(),
             getS5PendingRewards(),
             getS6PendingRewards(),
             getS7PendingRewards(),
             // getNodePointRewards(),
             checkIsPreacher(),
-            // getDividendPointRewards()
+            getDividendPointRewards(),
+            getUserStakes()
         ]);
+        
+        console.log(`[DividendRewards] Raw: ${dividendRewards}`);
 
         const kpiMetS7 = kpi >= S7_THRESHOLD;
         const kpiMetS6 = kpi >= S6_THRESHOLD;
@@ -236,13 +246,27 @@ const fetchRewardData = async () => {
         s6_rewards.value = s6Rewards;
         s7_rewards.value = s7Rewards;
         // node_rewards.value = nodeRewards;
-        // dividend_rewards.value = dividendRewards;
+        dividend_rewards.value = dividendRewards;
         isPreacher.value = preacherStatus;
+        
+        const stakesFloat = parseFloat(userStakes);
+        console.log(`[NodeStatus] UserStakes Raw: ${userStakes}, Float: ${stakesFloat}`);
+
+        if (Math.abs(stakesFloat - 50) < 0.01) {
+            nodeStatus.value = 'big';
+            console.log("Current Node Status: Master (50)");
+        } else if (Math.abs(stakesFloat - 10) < 0.01) {
+            nodeStatus.value = 'small';
+            console.log("Current Node Status: Elite (10)");
+        } else {
+            nodeStatus.value = null;
+            console.log("Current Node Status: None");
+        }
 
         // Use string comparison or regex for show flags to avoid float precision issues
         // Check if string has any non-zero digit
         // showNodePointSection.value = /[1-9]/.test(nodeRewards);
-        // showDividendPointSection.value = /[1-9]/.test(dividendRewards);
+        showDividendPointSection.value = true;
 
     } catch (error) {
         console.error("Failed to fetch reward data:", error);
@@ -328,7 +352,6 @@ const claimNodeReward = async () => {
 };
 
 const claimDividendReward = async () => {
-    /*
     if (!isPreacher.value) {
         showToast(t('toast.stake200Tokens'));
         return;
@@ -347,7 +370,6 @@ const claimDividendReward = async () => {
     } finally {
         isClaimingDividendReward.value = false;
     }
-    */
 };
 
 watch(() => walletState.isAuthenticated, (isAuth) => {
@@ -718,6 +740,34 @@ watch(() => walletState.isAuthenticated, (isAuth) => {
         font-size: 2rem;
         color: var(--primary-gold);
         opacity: 0.5;
+    }
+}
+
+.btn-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.node-badge {
+    position: absolute;
+    top: -8px;
+    right: -5px;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--primary-gold);
+    color: #000;
+    font-weight: 700;
+    z-index: 2;
+    pointer-events: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    border: 1px solid #fff;
+    
+    &.small {
+        background: #silver; /* Or a different color if needed, sticking to gold or similar for consistency */
+        background: var(--text-muted);
+        color: #fff;
+        border-color: var(--border-light);
     }
 }
 </style>
