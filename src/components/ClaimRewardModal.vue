@@ -266,7 +266,14 @@ const fetchRewardData = async () => {
         // Use string comparison or regex for show flags to avoid float precision issues
         // Check if string has any non-zero digit
         // showNodePointSection.value = /[1-9]/.test(nodeRewards);
-        showDividendPointSection.value = true;
+        
+        // Show Dividend Section ONLY IF:
+        // 1. User is Master (Big Node) or Elite (Small Node)
+        // 2. OR User has claimable rewards (dividendRewards > 0)
+        const hasDividendRewards = /[1-9]/.test(dividendRewards);
+        const isNode = nodeStatus.value !== null;
+        
+        showDividendPointSection.value = isNode || hasDividendRewards;
 
     } catch (error) {
         console.error("Failed to fetch reward data:", error);
