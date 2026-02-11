@@ -316,8 +316,8 @@ export default {
              return this.durationOptions.filter(opt => opt.value === 4);
         }
 
-        // Otherwise, show options >= stakeIndex BUT exclude index 4 (1 day) AND exclude index 0 (7 days) and 1 (15 days)
-        return this.durationOptions.filter(opt => opt.value >= this.stakeIndex && opt.value !== 4 && opt.value !== 0 && opt.value !== 1);
+        // Otherwise, show options >= stakeIndex BUT exclude index 4 (1 day)
+        return this.durationOptions.filter(opt => opt.value >= this.stakeIndex && opt.value !== 4);
     },
     isAmountInvalid() {
         if (!this.newAmount) return false;
