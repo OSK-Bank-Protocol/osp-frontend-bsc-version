@@ -154,7 +154,7 @@ export default {
               days: label,
               rate: rate
           };
-      }).filter(opt => opt.value !== 0 && opt.value !== 1 && opt.value !== 4); // Hide index 0, 1 and 4 for new injections
+      }).filter(opt => opt.value !== 4); // Hide index 4 (1 day) for new injections, restore 0 (7 days) and 1 (15 days)
     },
     walletAddress() {
       return this.walletState.address;
